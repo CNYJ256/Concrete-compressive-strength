@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+"""v9 推理脚本：基于已训练模型包执行强度预测。
+
+支持两种输入格式：
+1) 标准列名（cement/slag/.../age）；
+2) UCI 原始英文列名（自动映射到标准列）。
+"""
+
 import logging
 import sys
 import traceback
@@ -13,9 +20,11 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from v8.train import BASE_FEATURES, feature_engineering, feature_engineering_v7
+# 归档后从 oldversion.v8 复用与训练一致的特征工程逻辑，保证训练-推理口径一致。
+from oldversion.v8.train import BASE_FEATURES, feature_engineering, feature_engineering_v7
 
 
+# UCI 原始列名 -> 项目标准列名映射。
 RAW_TO_STD_COLUMN_MAP = {
     "Cement (component 1)(kg in a m^3 mixture)": "cement",
     "Blast Furnace Slag (component 2)(kg in a m^3 mixture)": "slag",
@@ -29,6 +38,7 @@ RAW_TO_STD_COLUMN_MAP = {
 
 
 def get_logger() -> logging.Logger:
+    """构建并返回推理日志器（幂等）。"""
     logger = logging.getLogger("v9_predict")
     logger.setLevel(logging.INFO)
     if logger.handlers:
@@ -44,6 +54,7 @@ def get_logger() -> logging.Logger:
 
 
 def resolve_paths() -> dict[str, Path]:
+    """统一解析推理阶段常用路径。"""
     root = Path(__file__).resolve().parents[1]
     return {
         "data": root / "data" / "Concrete_Data.xls",
@@ -53,6 +64,13 @@ def resolve_paths() -> dict[str, Path]:
 
 
 def normalize_input_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """将输入数据标准化为训练所需字段与类型。
+
+    规则：
+    - 若已是标准列，则直接使用；
+    - 若为 UCI 原始列，则映射后使用；
+    - 否则抛出错误，避免静默列错位。
+    """
     cols = set(df.columns)
     if set(BASE_FEATURES).issubset(cols):
         out = df.copy()
@@ -71,12 +89,14 @@ def normalize_input_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_demo_input(data_path: Path, n: int = 5) -> pd.DataFrame:
+    """构造默认演示输入（数据集前 n 行）。"""
     df = pd.read_excel(data_path, engine="xlrd")
     df = df.rename(columns=RAW_TO_STD_COLUMN_MAP)
     return df[BASE_FEATURES].head(n).copy()
 
 
 def predict_with_bundle(bundle: dict, base: pd.DataFrame) -> np.ndarray:
+    """按模型包元数据执行推理，并自动匹配融合策略。"""
     model_type = bundle.get("model_type")
     if model_type != "age_aware_weighted_ensemble":
         raise ValueError(f"当前 v9 仅支持 age_aware_weighted_ensemble，收到: {model_type}")
@@ -84,9 +104,11 @@ def predict_with_bundle(bundle: dict, base: pd.DataFrame) -> np.ndarray:
     models: dict = bundle["models"]
     model_spaces: dict = bundle["model_spaces"]
 
+    # 同时构造 v8/v7 两套特征空间，供不同子模型按需选用。
     fe_v8 = feature_engineering(base).reindex(columns=bundle["feature_columns_v8"])
     fe_v7 = feature_engineering_v7(base).reindex(columns=bundle["feature_columns_v7"])
 
+    # 先分别得到每个子模型的预测结果，再进行加权融合。
     per_model_pred: dict[str, np.ndarray] = {}
     for model_id, model in models.items():
         fs = model_spaces.get(model_id, "v8")
@@ -96,12 +118,14 @@ def predict_with_bundle(bundle: dict, base: pd.DataFrame) -> np.ndarray:
     pred = np.zeros(len(base), dtype=float)
     strategy = bundle.get("selected_strategy", "global")
 
+    # 全局权重：所有样本共享同一组权重。
     if strategy == "global":
         weights = bundle["weights_global"]
         for model_id, w in weights.items():
             pred += float(w) * per_model_pred[model_id]
         return pred
 
+    # 分段权重：按龄期分别应用 early / late 两套权重。
     if strategy == "age_piecewise":
         cfg = bundle["weights_age_piecewise"]
         split_day = float(cfg["age_split_day"])
@@ -122,18 +146,22 @@ def predict_with_bundle(bundle: dict, base: pd.DataFrame) -> np.ndarray:
 
 
 def main() -> None:
+    """v9 推理主入口。"""
     logger = get_logger()
     paths = resolve_paths()
 
     try:
+        # 1) 校验模型文件并加载模型包。
         if not paths["model"].exists():
             raise FileNotFoundError(f"未找到模型文件: {paths['model']}，请先运行 train.py")
 
         bundle = joblib.load(paths["model"])
 
+        # 2) 解析输入/输出路径：支持命令行覆写。
         input_path = Path(sys.argv[1]) if len(sys.argv) >= 2 else None
         output_path = Path(sys.argv[2]) if len(sys.argv) >= 3 else paths["output"]
 
+        # 3) 读取输入数据（外部 CSV 或默认 demo）。
         if input_path is not None:
             logger.info("读取外部输入: %s", input_path)
             raw = pd.read_csv(input_path)
@@ -142,6 +170,7 @@ def main() -> None:
             logger.info("未提供输入文件，默认使用数据集前5行")
             base = build_demo_input(paths["data"], n=5)
 
+        # 4) 执行融合预测并输出结果 CSV。
         pred = predict_with_bundle(bundle, base)
 
         out = base.copy()

@@ -26,10 +26,12 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-# 让脚本在任意 cwd 下都能正确导入同目录模块
+# 让脚本在任意 cwd 下都能正确导入项目公共模块（scripts/）。
 SCRIPT_DIR = Path(__file__).resolve().parent
-if str(SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_DIR))
+PROJECT_ROOT = SCRIPT_DIR.parents[1]
+COMMON_SCRIPTS_DIR = PROJECT_ROOT / "scripts"
+if str(COMMON_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(COMMON_SCRIPTS_DIR))
 
 from config import DOC_DIR, FEATURE_COLUMNS, RANDOM_STATE, TARGET_COLUMN
 from data_loader import load_concrete_data

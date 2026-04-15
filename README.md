@@ -1,132 +1,144 @@
-# 基于机器学习的混凝土抗压强度预测
+# 混凝土抗压强度预测（v9 主线）
 
-## 1. 项目学术背景
+本仓库聚焦混凝土抗压强度预测的**论文复现 + 工程化迭代**，当前默认使用 `v9` 作为主版本。
 
-混凝土抗压强度受胶凝材料组成、骨料级配、水胶比、外加剂与龄期等多因素耦合影响，呈显著非线性关系。传统经验回归模型在复杂配比条件下泛化能力有限，因此本项目以机器学习为核心，构建可复现、可迭代、可解释的强度预测流程。
+## 1. 项目背景
 
-本仓库围绕两条文献主线展开：
+混凝土强度受胶凝材料、骨料、水胶比、外加剂与龄期等因素共同影响，呈明显非线性。项目先复现两条经典研究路径，再在此基础上持续优化：
 
-- 论文A（AdaBoost, 2020）：验证集成学习在强度预测中的精度与鲁棒性；
-- 论文B（ANN, 1998）：验证 ANN 相比传统回归的优势，并对比 w/c 与 w/b 回归趋势。
+- **paper1 复现（AdaBoost 主线）**：对比 AdaBoost / ANN / SVM；
+- **paper2 复现（ANN 主线）**：验证 ANN 相对回归模型（w/c、w/b）的优势；
+- **v9 工程优化主线**：在 `v8` 基础上升级为龄期分段自适应融合。
 
-在复现基础上，本项目继续执行工程化迭代优化（特征工程、难样本重加权、Stacking 集成等）。
+## 2. 当前仓库结构（重构后）
 
----
+- `data/`：原始数据（`Concrete_Data.xls`）
+- `scripts/`：公共模块（配置、数据读取、指标工具、模型工厂）
+- `paper1/`：论文1复现脚本与结果
+- `paper2/`：论文2复现脚本与结果
+- `v9/`：当前主版本（训练、推理、指标、模型）
+- `oldversion/`：归档历史版本（`v1` ~ `v8`）及早期结果文档
 
-## 2. 研究目标
+> 说明：`v9` 会复用 `oldversion/v8/train.py` 中的成熟特征工程与模型构造函数。
 
-1. 复现并对比经典模型：AdaBoost / ANN / SVM；
-2. 复现实验结论：ANN 优于传统回归，w/b 回归优于 w/c 回归；
-3. 构建可持续优化管线：从 baseline（v0）到多版本迭代（v1~v5）；
-4. 形成标准化文档与实验记录，支持课程汇报与科研延展。
+## 3. 环境与依赖配置
 
----
+推荐：Python 3.9+（Windows/Linux/macOS 均可）
 
-## 3. 环境依赖
+建议安装依赖：
 
-推荐环境：
-
-- Python 3.9+
-- Windows / Linux / macOS
-
-核心依赖：
-
-- pandas
 - numpy
+- pandas
+- scipy
 - scikit-learn
-- xlrd（读取 `.xls`）
-- scipy（用于公式回归参数拟合）
+- xlrd
+- joblib
+- optuna
+- xgboost
+- lightgbm
 
-说明：项目已对部分旧版 `scikit-learn` 做兼容处理（如 RMSE 计算方式）。
+## 4. 核心运行步骤（含 v9）
 
----
+### 4.1 论文复现
 
-## 4. 数据说明
+1) 运行 `paper1` 复现：
 
-- 主数据文件：`data/Concrete_Data.xls`
-- 样本规模：1030 条
-- 特征维度：8 个输入变量
-- 目标变量：混凝土抗压强度（MPa）
-
-标准化后的列名如下：
-
-- 特征：`cement`, `slag`, `fly_ash`, `water`, `superplasticizer`, `coarse_agg`, `fine_agg`, `age`
-- 目标：`strength`
-
----
-
-## 5. 项目结构
-
-- `scripts/`：公共模块（配置、数据加载、日志、指标、模型工厂）
-- `paper1/`：第一篇论文复现脚本与说明文档
-- `paper2/`：第二篇论文复现脚本与说明文档
-- `v1/`：第一轮创新脚本（优化 AdaBoost）
-- `v2/`：第二轮创新脚本（Stacking 新技术路径）
-- `v3/` ~ `v7/`：受控自动化迭代版本产物目录（训练脚本、指标、模型等）
-- `doc/`：创新阶段与综合阶段报告
-- `paper/`：论文翻译稿
-- `data/`：原始数据与数据说明
-
-公共模块说明见：`scripts/README.md`
-
----
-
-## 6. 运行说明（推荐顺序）
-
-1. 第一篇论文复现（v0 基线）
-   - 运行：`paper1/scripts/reproduce_pipeline.py`
-   - 输出：`paper1/doc/baseline_results.json`、`paper1/doc/Baseline_Reproduction_Report.md`
-
-2. 第二篇论文复现（ANN vs 回归）
-   - 运行：`paper2/scripts/paper2_reproduction.py`
-   - 输出：`paper2/doc/paper2_reproduction_results.json`、`paper2/doc/Paper2_Reproduction_Report.md`
-
-3. 第一轮优化（改进 AdaBoost）
-   - 运行：`v1/optimized_model.py`
-   - 输出：`doc/optimization_results.json`、`doc/Optimization_Comparison_Report.md`
-
-4. 第二轮优化（Stacking 新技术路径）
-   - 运行：`v2/new_techpath_model.py`
-   - 输出：`doc/new_techpath_results.json`、`doc/New_TechPath_Comparison_Report.md`
-
-5. 多轮自动化迭代版本（v3~v7）
-   - 目录：`v3/` ~ `v7/`
-   - 内容：每版独立 `train.py`、`predict.py`、`metrics.json`、`model.joblib`、`CHANGELOG.md`
-
----
-
-## 7. 整体架构流（逻辑）
-
-```text
-Concrete_Data.xls
-   -> scripts/data_loader.py（读取/清洗/列标准化）
-   -> split_features_target（X, y）
-   -> paper1/paper2/v1/v2 脚本训练与评估
-   -> scripts/metrics_utils.py（R², RMSE, MAPE, MAE）
-   -> paper1/doc 或 paper2/doc 或 doc 报告输出
+```bash
+python paper1/scripts/reproduce_pipeline.py
 ```
 
-其中：
+输出：
 
-- `paper1/scripts/reproduce_pipeline.py` 是第一篇论文复现主入口；
-- `paper2/scripts/paper2_reproduction.py` 是第二篇论文复现主入口；
-- `v1/optimized_model.py` 在 baseline 上做特征工程 + 难样本重加权；
-- `v2/new_techpath_model.py` 在优化思路上引入 Stacking 集成。
+- `doc/baseline_results.json`
+- `doc/Baseline_Reproduction_Report.md`
+
+2) 运行 `paper2` 复现：
+
+```bash
+python paper2/scripts/paper2_reproduction.py
+```
+
+输出：
+
+- `doc/paper2_reproduction_results.json`
+- `doc/Paper2_Reproduction_Report.md`
+
+### 4.2 运行 v9 训练与推理
+
+1) 训练 v9：
+
+```bash
+python v9/train.py
+```
+
+输出：
+
+- `v9/model.joblib`
+- `v9/metrics.json`
+
+2) 推理（默认数据前 5 行演示）：
+
+```bash
+python v9/predict.py
+```
+
+输出：
+
+- `v9/predictions.csv`
+
+3) 推理（可选：自定义 CSV 输入）：
+
+```bash
+python v9/predict.py your_input.csv your_output.csv
+```
+
+## 5. v9 主要改进（相对 v8）
+
+`v9` 的核心创新是**龄期分段自适应融合（Age-aware Piecewise Blend）**：
+
+1. 复用 `v8` 的三类强模型参数（XGBoost/LightGBM/HGB）；
+2. 保留 `HGB_v7_baseline` 作为稳健锚点，增强鲁棒性；
+3. 对 `age <= 28` 与 `age > 28` 分别学习融合权重；
+4. 在“全局单权重融合”与“龄期分段融合”之间自动择优。
+
+## 6. 结果简要展示（真实运行结果）
+
+### 6.1 论文复现摘要
+
+- **paper1（10折 AdaBoost）**：
+  - R²_mean = **0.9090**
+  - RMSE_mean = **4.9695**
+- **paper2（Source-like 分组，test R² 均值）**：
+  - ANN = **0.8436**
+  - Reg(w/b) = **0.7796**
+  - Reg(w/c) = **0.6278**
+
+### 6.2 v9 与前代对比（10折 CV）
+
+| 版本 | 策略 | R²_mean | RMSE_mean |
+|---|---|---:|---:|
+| v7 | HGB baseline | 0.947965 | 3.740782 |
+| v8 | 全局加权融合 | 0.948725 | 3.700053 |
+| **v9** | **龄期分段融合（最佳）** | **0.948755** | **3.699571** |
+
+相对 v8，v9 增益：
+
+- R²：`+0.00003034`
+- RMSE：`-0.00048225`
+
+## 7. 数据说明
+
+- 数据文件：`data/Concrete_Data.xls`
+- 样本量：1030
+- 输入特征：8 个（`cement, slag, fly_ash, water, superplasticizer, coarse_agg, fine_agg, age`）
+- 目标变量：`strength`（MPa）
+
+## 8. 可复现性说明
+
+- 统一随机种子：`42`
+- 统一评估协议：10 折 KFold（`shuffle=True, random_state=42`）
+- 所有关键结果均落盘为 JSON / Markdown，便于复核与课程汇报
 
 ---
 
-## 8. 可复现性与工程约定
-
-- 全局随机种子：`scripts/config.py` 中 `RANDOM_STATE`
-- 统一评估指标：`R²`, `RMSE`, `MAPE`, `MAE`
-- 建议版本化实验在独立目录（当前为 `v3`~`v7`）隔离实现，避免互相污染
-- 每次迭代需记录：改动内容、交叉验证指标变化、工程反思
-
----
-
-## 9. 后续扩展方向
-
-- 更系统的超参数优化（如 Optuna / 贝叶斯优化）
-- 更严格的泛化验证（重复 K-Fold、外部测试集）
-- 机理解释增强（SHAP、PDP、单调约束）
-- 从“强度预测”扩展到“配比反推与多目标优化”
+如需查看历史版本实现细节，请进入 `oldversion/`。
