@@ -1,0 +1,901 @@
+{
+  "version": "v8",
+  "strategy": "5-step controlled iteration with external boosting and weighted blending",
+  "cv_protocol": {
+    "type": "KFold",
+    "n_splits": 10,
+    "shuffle": true,
+    "random_state": 42
+  },
+  "baseline_v7": {
+    "R2_mean": 0.947965399021796,
+    "R2_std": 0.017761603564915886,
+    "RMSE_mean": 3.7407815724955533,
+    "RMSE_std": 0.5973724522683225
+  },
+  "iteration_plan": [
+    {
+      "iteration": "Iter-1",
+      "model_family": "HGB",
+      "hypothesis": "扩大 HGB 搜索空间并加入物理增强特征，可在同协议下进一步提升 R²。",
+      "n_trials": 35
+    },
+    {
+      "iteration": "Iter-2",
+      "model_family": "XGBoost",
+      "hypothesis": "XGBoost 的二阶梯度与正则化可提升复杂非线性配比-龄期拟合能力。",
+      "n_trials": 35
+    },
+    {
+      "iteration": "Iter-3",
+      "model_family": "LightGBM",
+      "hypothesis": "LightGBM 的叶子优先生长能捕获高阶交互，从而降低 RMSE。",
+      "n_trials": 40
+    },
+    {
+      "iteration": "Iter-4",
+      "model_family": "XGBoost",
+      "hypothesis": "在 Iter-2 基础上二次强化 XGBoost 搜索，可进一步逼近最优偏差-方差平衡。",
+      "n_trials": 25
+    },
+    {
+      "iteration": "Iter-5",
+      "model_family": "WeightedBlend",
+      "hypothesis": "融合前三强模型可降低方差，突破单模型上限。",
+      "n_trials": 0
+    }
+  ],
+  "iteration_results": [
+    {
+      "iteration": "Iter-1",
+      "model_family": "HGB",
+      "hypothesis": "扩大 HGB 搜索空间并加入物理增强特征，可在同协议下进一步提升 R²。",
+      "n_trials": 35,
+      "level1_attempt": 1,
+      "best_params": {
+        "learning_rate": 0.05678535332386602,
+        "max_iter": 1809,
+        "max_depth": 12,
+        "max_leaf_nodes": 15,
+        "min_samples_leaf": 14,
+        "l2_regularization": 4.580924468859991e-05,
+        "max_bins": 213
+      },
+      "cv_10fold": {
+        "R2_mean": 0.9454968971921444,
+        "R2_std": 0.021505422092629654,
+        "RMSE_mean": 3.808983851079879,
+        "RMSE_std": 0.703931674950154,
+        "fit_time_mean_sec": 1.4591246366500854,
+        "score_time_mean_sec": 0.02341175079345703
+      },
+      "compare_to_prev_best": {
+        "R2_gain": -0.002468501829651637,
+        "RMSE_drop": -0.0682022785843257
+      },
+      "accepted": false,
+      "accepted_sub_version": null,
+      "top_trials": [
+        {
+          "trial_number": 14,
+          "params": {
+            "learning_rate": 0.05678535332386602,
+            "max_iter": 1809,
+            "max_depth": 12,
+            "max_leaf_nodes": 15,
+            "min_samples_leaf": 14,
+            "l2_regularization": 4.580924468859991e-05,
+            "max_bins": 213
+          },
+          "metrics": {
+            "R2_mean": 0.9454968971921444,
+            "R2_std": 0.021505422092629654,
+            "RMSE_mean": 3.808983851079879,
+            "RMSE_std": 0.703931674950154,
+            "fit_time_mean_sec": 1.4591246366500854,
+            "score_time_mean_sec": 0.02341175079345703
+          }
+        },
+        {
+          "trial_number": 33,
+          "params": {
+            "learning_rate": 0.04412813062642959,
+            "max_iter": 2432,
+            "max_depth": 6,
+            "max_leaf_nodes": 16,
+            "min_samples_leaf": 9,
+            "l2_regularization": 1.0136415625311087e-05,
+            "max_bins": 153
+          },
+          "metrics": {
+            "R2_mean": 0.944358478890712,
+            "R2_std": 0.02103888904488219,
+            "RMSE_mean": 3.8487278015079367,
+            "RMSE_std": 0.6676220936068851,
+            "fit_time_mean_sec": 1.6214375972747803,
+            "score_time_mean_sec": 0.028411364555358885
+          }
+        },
+        {
+          "trial_number": 11,
+          "params": {
+            "learning_rate": 0.028923227576737962,
+            "max_iter": 3000,
+            "max_depth": 6,
+            "max_leaf_nodes": 18,
+            "min_samples_leaf": 14,
+            "l2_regularization": 2.9703874012682374e-05,
+            "max_bins": 205
+          },
+          "metrics": {
+            "R2_mean": 0.943950688697262,
+            "R2_std": 0.02100945939244476,
+            "RMSE_mean": 3.863830271841896,
+            "RMSE_std": 0.6746953328702876,
+            "fit_time_mean_sec": 2.105718493461609,
+            "score_time_mean_sec": 0.03529326915740967
+          }
+        },
+        {
+          "trial_number": 16,
+          "params": {
+            "learning_rate": 0.02248592495309685,
+            "max_iter": 2383,
+            "max_depth": 12,
+            "max_leaf_nodes": 17,
+            "min_samples_leaf": 17,
+            "l2_regularization": 5.2233702109172796e-05,
+            "max_bins": 221
+          },
+          "metrics": {
+            "R2_mean": 0.943818715278179,
+            "R2_std": 0.02211826577391119,
+            "RMSE_mean": 3.8668364337423844,
+            "RMSE_std": 0.6879583744583563,
+            "fit_time_mean_sec": 2.156216764450073,
+            "score_time_mean_sec": 0.03530364036560059
+          }
+        },
+        {
+          "trial_number": 7,
+          "params": {
+            "learning_rate": 0.036124538298439514,
+            "max_iter": 3026,
+            "max_depth": 6,
+            "max_leaf_nodes": 18,
+            "min_samples_leaf": 12,
+            "l2_regularization": 9.5667949603814e-05,
+            "max_bins": 161
+          },
+          "metrics": {
+            "R2_mean": 0.9435323632741508,
+            "R2_std": 0.02065909542189709,
+            "RMSE_mean": 3.884159227912838,
+            "RMSE_std": 0.6408256553906352,
+            "fit_time_mean_sec": 2.015571403503418,
+            "score_time_mean_sec": 0.037320065498352054
+          }
+        }
+      ],
+      "search_time_sec": 116.2393379000132,
+      "iteration_time_sec": 116.24115090002306
+    },
+    {
+      "iteration": "Iter-2",
+      "model_family": "XGBoost",
+      "hypothesis": "XGBoost 的二阶梯度与正则化可提升复杂非线性配比-龄期拟合能力。",
+      "n_trials": 35,
+      "level1_attempt": 1,
+      "best_params": {
+        "n_estimators": 1482,
+        "learning_rate": 0.044604576412178736,
+        "max_depth": 4,
+        "min_child_weight": 7.394621020486849,
+        "subsample": 0.6642601673434315,
+        "colsample_bytree": 0.6247108136598432,
+        "gamma": 2.4343952947126315,
+        "reg_alpha": 0.49332537524084563,
+        "reg_lambda": 3.0210800926855668
+      },
+      "cv_10fold": {
+        "R2_mean": 0.9459344669263606,
+        "R2_std": 0.02244575490659121,
+        "RMSE_mean": 3.7816600940647738,
+        "RMSE_std": 0.7085652870079042,
+        "fit_time_mean_sec": 0.6402101516723633,
+        "score_time_mean_sec": 0.00400388240814209
+      },
+      "compare_to_prev_best": {
+        "R2_gain": -0.002030932095435367,
+        "RMSE_drop": -0.04087852156922045
+      },
+      "accepted": false,
+      "accepted_sub_version": null,
+      "top_trials": [
+        {
+          "trial_number": 32,
+          "params": {
+            "n_estimators": 1482,
+            "learning_rate": 0.044604576412178736,
+            "max_depth": 4,
+            "min_child_weight": 7.394621020486849,
+            "subsample": 0.6642601673434315,
+            "colsample_bytree": 0.6247108136598432,
+            "gamma": 2.4343952947126315,
+            "reg_alpha": 0.49332537524084563,
+            "reg_lambda": 3.0210800926855668
+          },
+          "metrics": {
+            "R2_mean": 0.9459344669263606,
+            "R2_std": 0.02244575490659121,
+            "RMSE_mean": 3.7816600940647738,
+            "RMSE_std": 0.7085652870079042,
+            "fit_time_mean_sec": 0.6402101516723633,
+            "score_time_mean_sec": 0.00400388240814209
+          }
+        },
+        {
+          "trial_number": 10,
+          "params": {
+            "n_estimators": 1743,
+            "learning_rate": 0.048442300081096464,
+            "max_depth": 3,
+            "min_child_weight": 4.866259924601751,
+            "subsample": 0.6971652906873073,
+            "colsample_bytree": 0.6721998111896993,
+            "gamma": 1.620576598255882,
+            "reg_alpha": 0.05803202476092204,
+            "reg_lambda": 1.7149110472153772
+          },
+          "metrics": {
+            "R2_mean": 0.9452153071689378,
+            "R2_std": 0.023633033887416652,
+            "RMSE_mean": 3.8010140521793567,
+            "RMSE_std": 0.7220418456395236,
+            "fit_time_mean_sec": 0.5953867197036743,
+            "score_time_mean_sec": 0.0037649393081665037
+          }
+        },
+        {
+          "trial_number": 21,
+          "params": {
+            "n_estimators": 1982,
+            "learning_rate": 0.051792936252018834,
+            "max_depth": 3,
+            "min_child_weight": 2.2135876454966428,
+            "subsample": 0.7240090532623362,
+            "colsample_bytree": 0.5775615146781257,
+            "gamma": 0.40475384548621895,
+            "reg_alpha": 0.008828439785316746,
+            "reg_lambda": 0.0006359648471131213
+          },
+          "metrics": {
+            "R2_mean": 0.9448457983682385,
+            "R2_std": 0.024195433431244872,
+            "RMSE_mean": 3.8107703730721214,
+            "RMSE_std": 0.7433806685856624,
+            "fit_time_mean_sec": 0.6421279430389404,
+            "score_time_mean_sec": 0.0034619808197021485
+          }
+        },
+        {
+          "trial_number": 17,
+          "params": {
+            "n_estimators": 1424,
+            "learning_rate": 0.0730014765950198,
+            "max_depth": 3,
+            "min_child_weight": 1.9957034138738408,
+            "subsample": 0.7221160049885235,
+            "colsample_bytree": 0.5703965379055648,
+            "gamma": 0.2607531678001579,
+            "reg_alpha": 0.9536672531796521,
+            "reg_lambda": 0.001901555717618137
+          },
+          "metrics": {
+            "R2_mean": 0.9445689624873728,
+            "R2_std": 0.02355330952539649,
+            "RMSE_mean": 3.8220486343731928,
+            "RMSE_std": 0.7010953824106316,
+            "fit_time_mean_sec": 0.4935506582260132,
+            "score_time_mean_sec": 0.003467559814453125
+          }
+        },
+        {
+          "trial_number": 12,
+          "params": {
+            "n_estimators": 1777,
+            "learning_rate": 0.04231491617477266,
+            "max_depth": 3,
+            "min_child_weight": 2.9269969584780307,
+            "subsample": 0.6734029866722644,
+            "colsample_bytree": 0.740744241096096,
+            "gamma": 0.3147997685230146,
+            "reg_alpha": 0.5423731969231613,
+            "reg_lambda": 0.016484968352427076
+          },
+          "metrics": {
+            "R2_mean": 0.9445453639179607,
+            "R2_std": 0.023148543654249346,
+            "RMSE_mean": 3.831115690694986,
+            "RMSE_std": 0.7090032425644218,
+            "fit_time_mean_sec": 0.6694994926452636,
+            "score_time_mean_sec": 0.00383450984954834
+          }
+        }
+      ],
+      "search_time_sec": 38.87283320003189,
+      "iteration_time_sec": 38.874228499946184
+    },
+    {
+      "iteration": "Iter-3",
+      "model_family": "LightGBM",
+      "hypothesis": "LightGBM 的叶子优先生长能捕获高阶交互，从而降低 RMSE。",
+      "n_trials": 40,
+      "level1_attempt": 1,
+      "best_params": {
+        "n_estimators": 2127,
+        "learning_rate": 0.031969519083032506,
+        "num_leaves": 32,
+        "max_depth": 4,
+        "min_child_samples": 8,
+        "subsample": 0.838331183259241,
+        "colsample_bytree": 0.5905247550993065,
+        "reg_alpha": 0.7113890443035059,
+        "reg_lambda": 0.0002216693328024357,
+        "min_split_gain": 0.006463967504229284
+      },
+      "cv_10fold": {
+        "R2_mean": 0.9456523804968973,
+        "R2_std": 0.0208815983369301,
+        "RMSE_mean": 3.8051955588923327,
+        "RMSE_std": 0.6612680212227552,
+        "fit_time_mean_sec": 7.8052150964736935,
+        "score_time_mean_sec": 0.009112095832824707
+      },
+      "compare_to_prev_best": {
+        "R2_gain": -0.0023130185248987356,
+        "RMSE_drop": -0.06441398639677942
+      },
+      "accepted": false,
+      "accepted_sub_version": null,
+      "top_trials": [
+        {
+          "trial_number": 32,
+          "params": {
+            "n_estimators": 2127,
+            "learning_rate": 0.031969519083032506,
+            "num_leaves": 32,
+            "max_depth": 4,
+            "min_child_samples": 8,
+            "subsample": 0.838331183259241,
+            "colsample_bytree": 0.5905247550993065,
+            "reg_alpha": 0.7113890443035059,
+            "reg_lambda": 0.0002216693328024357,
+            "min_split_gain": 0.006463967504229284
+          },
+          "metrics": {
+            "R2_mean": 0.9456523804968973,
+            "R2_std": 0.0208815983369301,
+            "RMSE_mean": 3.8051955588923327,
+            "RMSE_std": 0.6612680212227552,
+            "fit_time_mean_sec": 7.8052150964736935,
+            "score_time_mean_sec": 0.009112095832824707
+          }
+        },
+        {
+          "trial_number": 39,
+          "params": {
+            "n_estimators": 2393,
+            "learning_rate": 0.01962241401427294,
+            "num_leaves": 21,
+            "max_depth": 4,
+            "min_child_samples": 11,
+            "subsample": 0.6377542699213771,
+            "colsample_bytree": 0.5016680327633396,
+            "reg_alpha": 0.038230448372932345,
+            "reg_lambda": 0.0001734413367626886,
+            "min_split_gain": 0.2018994284234095
+          },
+          "metrics": {
+            "R2_mean": 0.9444823651700217,
+            "R2_std": 0.019755969244090704,
+            "RMSE_mean": 3.8549073494049324,
+            "RMSE_std": 0.6269473430033964,
+            "fit_time_mean_sec": 6.130255937576294,
+            "score_time_mean_sec": 0.006238579750061035
+          }
+        },
+        {
+          "trial_number": 37,
+          "params": {
+            "n_estimators": 2333,
+            "learning_rate": 0.04103955359397274,
+            "num_leaves": 42,
+            "max_depth": 4,
+            "min_child_samples": 18,
+            "subsample": 0.8047626874570185,
+            "colsample_bytree": 0.5448896971763375,
+            "reg_alpha": 0.07423838928416883,
+            "reg_lambda": 0.0005200966393294288,
+            "min_split_gain": 0.018514548951332272
+          },
+          "metrics": {
+            "R2_mean": 0.943916369034761,
+            "R2_std": 0.02071232226636726,
+            "RMSE_mean": 3.8708046981482767,
+            "RMSE_std": 0.6594733643961606,
+            "fit_time_mean_sec": 5.453436493873596,
+            "score_time_mean_sec": 0.00947885513305664
+          }
+        },
+        {
+          "trial_number": 26,
+          "params": {
+            "n_estimators": 1902,
+            "learning_rate": 0.07171395521209667,
+            "num_leaves": 87,
+            "max_depth": 4,
+            "min_child_samples": 14,
+            "subsample": 0.8115017358928074,
+            "colsample_bytree": 0.7998400605100959,
+            "reg_alpha": 0.09018759608226593,
+            "reg_lambda": 0.0005682157756302255,
+            "min_split_gain": 0.07135393950401889
+          },
+          "metrics": {
+            "R2_mean": 0.9432551759751278,
+            "R2_std": 0.020609448999367095,
+            "RMSE_mean": 3.8970292548904792,
+            "RMSE_std": 0.6606271232539631,
+            "fit_time_mean_sec": 3.905583381652832,
+            "score_time_mean_sec": 0.013339591026306153
+          }
+        },
+        {
+          "trial_number": 28,
+          "params": {
+            "n_estimators": 1666,
+            "learning_rate": 0.034379145776921353,
+            "num_leaves": 120,
+            "max_depth": 4,
+            "min_child_samples": 8,
+            "subsample": 0.8410182297976184,
+            "colsample_bytree": 0.6524084942431392,
+            "reg_alpha": 3.5761979387441563,
+            "reg_lambda": 0.0008401748422874714,
+            "min_split_gain": 0.07760694202844758
+          },
+          "metrics": {
+            "R2_mean": 0.9432304246112588,
+            "R2_std": 0.019891408806202573,
+            "RMSE_mean": 3.90080675962693,
+            "RMSE_std": 0.646700060519163,
+            "fit_time_mean_sec": 4.244135069847107,
+            "score_time_mean_sec": 0.006327414512634277
+          }
+        }
+      ],
+      "search_time_sec": 258.1751706000068,
+      "iteration_time_sec": 258.1764941000147
+    },
+    {
+      "iteration": "Iter-4",
+      "model_family": "XGBoost",
+      "hypothesis": "在 Iter-2 基础上二次强化 XGBoost 搜索，可进一步逼近最优偏差-方差平衡。",
+      "n_trials": 25,
+      "level1_attempt": 1,
+      "best_params": {
+        "n_estimators": 1743,
+        "learning_rate": 0.048442300081096464,
+        "max_depth": 3,
+        "min_child_weight": 4.866259924601751,
+        "subsample": 0.6971652906873073,
+        "colsample_bytree": 0.6721998111896993,
+        "gamma": 1.620576598255882,
+        "reg_alpha": 0.05803202476092204,
+        "reg_lambda": 1.7149110472153772
+      },
+      "cv_10fold": {
+        "R2_mean": 0.9452153071689378,
+        "R2_std": 0.023633033887416652,
+        "RMSE_mean": 3.8010140521793567,
+        "RMSE_std": 0.7220418456395236,
+        "fit_time_mean_sec": 0.6158132076263427,
+        "score_time_mean_sec": 0.003716301918029785
+      },
+      "compare_to_prev_best": {
+        "R2_gain": -0.0027500918528582385,
+        "RMSE_drop": -0.06023247968380341
+      },
+      "accepted": false,
+      "accepted_sub_version": null,
+      "top_trials": [
+        {
+          "trial_number": 10,
+          "params": {
+            "n_estimators": 1743,
+            "learning_rate": 0.048442300081096464,
+            "max_depth": 3,
+            "min_child_weight": 4.866259924601751,
+            "subsample": 0.6971652906873073,
+            "colsample_bytree": 0.6721998111896993,
+            "gamma": 1.620576598255882,
+            "reg_alpha": 0.05803202476092204,
+            "reg_lambda": 1.7149110472153772
+          },
+          "metrics": {
+            "R2_mean": 0.9452153071689378,
+            "R2_std": 0.023633033887416652,
+            "RMSE_mean": 3.8010140521793567,
+            "RMSE_std": 0.7220418456395236,
+            "fit_time_mean_sec": 0.6158132076263427,
+            "score_time_mean_sec": 0.003716301918029785
+          }
+        },
+        {
+          "trial_number": 21,
+          "params": {
+            "n_estimators": 1982,
+            "learning_rate": 0.051792936252018834,
+            "max_depth": 3,
+            "min_child_weight": 2.2135876454966428,
+            "subsample": 0.7240090532623362,
+            "colsample_bytree": 0.5775615146781257,
+            "gamma": 0.40475384548621895,
+            "reg_alpha": 0.008828439785316746,
+            "reg_lambda": 0.0006359648471131213
+          },
+          "metrics": {
+            "R2_mean": 0.9448457983682385,
+            "R2_std": 0.024195433431244872,
+            "RMSE_mean": 3.8107703730721214,
+            "RMSE_std": 0.7433806685856624,
+            "fit_time_mean_sec": 0.6406766176223755,
+            "score_time_mean_sec": 0.0037017583847045897
+          }
+        },
+        {
+          "trial_number": 17,
+          "params": {
+            "n_estimators": 1424,
+            "learning_rate": 0.0730014765950198,
+            "max_depth": 3,
+            "min_child_weight": 1.9957034138738408,
+            "subsample": 0.7221160049885235,
+            "colsample_bytree": 0.5703965379055648,
+            "gamma": 0.2607531678001579,
+            "reg_alpha": 0.9536672531796521,
+            "reg_lambda": 0.001901555717618137
+          },
+          "metrics": {
+            "R2_mean": 0.9445689624873728,
+            "R2_std": 0.02355330952539649,
+            "RMSE_mean": 3.8220486343731928,
+            "RMSE_std": 0.7010953824106316,
+            "fit_time_mean_sec": 0.4897219181060791,
+            "score_time_mean_sec": 0.003398752212524414
+          }
+        },
+        {
+          "trial_number": 12,
+          "params": {
+            "n_estimators": 1777,
+            "learning_rate": 0.04231491617477266,
+            "max_depth": 3,
+            "min_child_weight": 2.9269969584780307,
+            "subsample": 0.6734029866722644,
+            "colsample_bytree": 0.740744241096096,
+            "gamma": 0.3147997685230146,
+            "reg_alpha": 0.5423731969231613,
+            "reg_lambda": 0.016484968352427076
+          },
+          "metrics": {
+            "R2_mean": 0.9445453639179607,
+            "R2_std": 0.023148543654249346,
+            "RMSE_mean": 3.831115690694986,
+            "RMSE_std": 0.7090032425644218,
+            "fit_time_mean_sec": 0.6818033933639527,
+            "score_time_mean_sec": 0.0037432193756103517
+          }
+        },
+        {
+          "trial_number": 6,
+          "params": {
+            "n_estimators": 1517,
+            "learning_rate": 0.06441947664628758,
+            "max_depth": 3,
+            "min_child_weight": 4.723674385963759,
+            "subsample": 0.6180909155642152,
+            "colsample_bytree": 0.6626651653816322,
+            "gamma": 1.9433864484474102,
+            "reg_alpha": 7.933105363733024e-05,
+            "reg_lambda": 2.4726485628781987
+          },
+          "metrics": {
+            "R2_mean": 0.9444831704829418,
+            "R2_std": 0.0230128630563518,
+            "RMSE_mean": 3.832349801112006,
+            "RMSE_std": 0.6967612431525714,
+            "fit_time_mean_sec": 0.5333700895309448,
+            "score_time_mean_sec": 0.0032167911529541017
+          }
+        }
+      ],
+      "search_time_sec": 29.64763479999965,
+      "iteration_time_sec": 29.648776600020938
+    },
+    {
+      "iteration": "Iter-5",
+      "model_family": "WeightedBlend",
+      "hypothesis": "融合前三强模型可降低方差，突破单模型上限。",
+      "n_trials": 0,
+      "best_params": {
+        "weights": {
+          "XGBoost_Iter-2": 0.34324517574129054,
+          "LightGBM_Iter-3": 0.025427635304609533,
+          "HGB_Iter-1": 0.041108854788963436,
+          "HGB_v7_baseline": 0.5902183341651366
+        }
+      },
+      "selected_models": [
+        {
+          "model_id": "XGBoost_Iter-2",
+          "model_family": "XGBoost",
+          "feature_space": "v8",
+          "best_params": {
+            "n_estimators": 1482,
+            "learning_rate": 0.044604576412178736,
+            "max_depth": 4,
+            "min_child_weight": 7.394621020486849,
+            "subsample": 0.6642601673434315,
+            "colsample_bytree": 0.6247108136598432,
+            "gamma": 2.4343952947126315,
+            "reg_alpha": 0.49332537524084563,
+            "reg_lambda": 3.0210800926855668
+          },
+          "cv_10fold": {
+            "R2_mean": 0.9459344669263606,
+            "R2_std": 0.02244575490659121,
+            "RMSE_mean": 3.7816600940647738,
+            "RMSE_std": 0.7085652870079042,
+            "fit_time_mean_sec": 0.6402101516723633,
+            "score_time_mean_sec": 0.00400388240814209
+          }
+        },
+        {
+          "model_id": "LightGBM_Iter-3",
+          "model_family": "LightGBM",
+          "feature_space": "v8",
+          "best_params": {
+            "n_estimators": 2127,
+            "learning_rate": 0.031969519083032506,
+            "num_leaves": 32,
+            "max_depth": 4,
+            "min_child_samples": 8,
+            "subsample": 0.838331183259241,
+            "colsample_bytree": 0.5905247550993065,
+            "reg_alpha": 0.7113890443035059,
+            "reg_lambda": 0.0002216693328024357,
+            "min_split_gain": 0.006463967504229284
+          },
+          "cv_10fold": {
+            "R2_mean": 0.9456523804968973,
+            "R2_std": 0.0208815983369301,
+            "RMSE_mean": 3.8051955588923327,
+            "RMSE_std": 0.6612680212227552,
+            "fit_time_mean_sec": 7.8052150964736935,
+            "score_time_mean_sec": 0.009112095832824707
+          }
+        },
+        {
+          "model_id": "HGB_Iter-1",
+          "model_family": "HGB",
+          "feature_space": "v8",
+          "best_params": {
+            "learning_rate": 0.05678535332386602,
+            "max_iter": 1809,
+            "max_depth": 12,
+            "max_leaf_nodes": 15,
+            "min_samples_leaf": 14,
+            "l2_regularization": 4.580924468859991e-05,
+            "max_bins": 213
+          },
+          "cv_10fold": {
+            "R2_mean": 0.9454968971921444,
+            "R2_std": 0.021505422092629654,
+            "RMSE_mean": 3.808983851079879,
+            "RMSE_std": 0.703931674950154,
+            "fit_time_mean_sec": 1.4591246366500854,
+            "score_time_mean_sec": 0.02341175079345703
+          }
+        },
+        {
+          "model_id": "HGB_v7_baseline",
+          "model_family": "HGB",
+          "feature_space": "v7",
+          "best_params": {
+            "learning_rate": 0.028,
+            "max_iter": 2400,
+            "max_depth": null,
+            "max_leaf_nodes": 15,
+            "min_samples_leaf": 6,
+            "l2_regularization": 0.001
+          },
+          "cv_10fold": {
+            "R2_mean": 0.947965399021796,
+            "R2_std": 0.017761603564915886,
+            "RMSE_mean": 3.7407815724955533,
+            "RMSE_std": 0.5973724522683225,
+            "fit_time_mean_sec": 0.0,
+            "score_time_mean_sec": 0.0
+          }
+        }
+      ],
+      "cv_10fold": {
+        "R2_mean": 0.9487248477451174,
+        "R2_std": 0.01947160031411161,
+        "RMSE_mean": 3.7000534550593605,
+        "RMSE_std": 0.6449535831056885,
+        "fit_time_mean_sec": 1.1679182399937418,
+        "score_time_mean_sec": 0.0
+      },
+      "compare_to_prev_best": {
+        "R2_gain": 0.0007594487233214542,
+        "RMSE_drop": 0.04072811743619287
+      },
+      "accepted": true,
+      "accepted_sub_version": "v8.1",
+      "iteration_time_sec": 19.578458499978296
+    }
+  ],
+  "best_model": {
+    "sub_version": "v8.1",
+    "model_type": "weighted_ensemble",
+    "model_family": "WeightedBlend",
+    "cv_10fold": {
+      "R2_mean": 0.9487248477451174,
+      "R2_std": 0.01947160031411161,
+      "RMSE_mean": 3.7000534550593605,
+      "RMSE_std": 0.6449535831056885,
+      "fit_time_mean_sec": 1.1679182399937418,
+      "score_time_mean_sec": 0.0
+    },
+    "best_params": null,
+    "weights": {
+      "XGBoost_Iter-2": 0.34324517574129054,
+      "LightGBM_Iter-3": 0.025427635304609533,
+      "HGB_Iter-1": 0.041108854788963436,
+      "HGB_v7_baseline": 0.5902183341651366
+    },
+    "selected_models": [
+      {
+        "model_id": "XGBoost_Iter-2",
+        "model_family": "XGBoost",
+        "feature_space": "v8",
+        "best_params": {
+          "n_estimators": 1482,
+          "learning_rate": 0.044604576412178736,
+          "max_depth": 4,
+          "min_child_weight": 7.394621020486849,
+          "subsample": 0.6642601673434315,
+          "colsample_bytree": 0.6247108136598432,
+          "gamma": 2.4343952947126315,
+          "reg_alpha": 0.49332537524084563,
+          "reg_lambda": 3.0210800926855668
+        },
+        "cv_10fold": {
+          "R2_mean": 0.9459344669263606,
+          "R2_std": 0.02244575490659121,
+          "RMSE_mean": 3.7816600940647738,
+          "RMSE_std": 0.7085652870079042,
+          "fit_time_mean_sec": 0.6402101516723633,
+          "score_time_mean_sec": 0.00400388240814209
+        }
+      },
+      {
+        "model_id": "LightGBM_Iter-3",
+        "model_family": "LightGBM",
+        "feature_space": "v8",
+        "best_params": {
+          "n_estimators": 2127,
+          "learning_rate": 0.031969519083032506,
+          "num_leaves": 32,
+          "max_depth": 4,
+          "min_child_samples": 8,
+          "subsample": 0.838331183259241,
+          "colsample_bytree": 0.5905247550993065,
+          "reg_alpha": 0.7113890443035059,
+          "reg_lambda": 0.0002216693328024357,
+          "min_split_gain": 0.006463967504229284
+        },
+        "cv_10fold": {
+          "R2_mean": 0.9456523804968973,
+          "R2_std": 0.0208815983369301,
+          "RMSE_mean": 3.8051955588923327,
+          "RMSE_std": 0.6612680212227552,
+          "fit_time_mean_sec": 7.8052150964736935,
+          "score_time_mean_sec": 0.009112095832824707
+        }
+      },
+      {
+        "model_id": "HGB_Iter-1",
+        "model_family": "HGB",
+        "feature_space": "v8",
+        "best_params": {
+          "learning_rate": 0.05678535332386602,
+          "max_iter": 1809,
+          "max_depth": 12,
+          "max_leaf_nodes": 15,
+          "min_samples_leaf": 14,
+          "l2_regularization": 4.580924468859991e-05,
+          "max_bins": 213
+        },
+        "cv_10fold": {
+          "R2_mean": 0.9454968971921444,
+          "R2_std": 0.021505422092629654,
+          "RMSE_mean": 3.808983851079879,
+          "RMSE_std": 0.703931674950154,
+          "fit_time_mean_sec": 1.4591246366500854,
+          "score_time_mean_sec": 0.02341175079345703
+        }
+      },
+      {
+        "model_id": "HGB_v7_baseline",
+        "model_family": "HGB",
+        "feature_space": "v7",
+        "best_params": {
+          "learning_rate": 0.028,
+          "max_iter": 2400,
+          "max_depth": null,
+          "max_leaf_nodes": 15,
+          "min_samples_leaf": 6,
+          "l2_regularization": 0.001
+        },
+        "cv_10fold": {
+          "R2_mean": 0.947965399021796,
+          "R2_std": 0.017761603564915886,
+          "RMSE_mean": 3.7407815724955533,
+          "RMSE_std": 0.5973724522683225,
+          "fit_time_mean_sec": 0.0,
+          "score_time_mean_sec": 0.0
+        }
+      }
+    ]
+  },
+  "compare_to_v7": {
+    "v7": {
+      "R2_mean": 0.947965399021796,
+      "R2_std": 0.017761603564915886,
+      "RMSE_mean": 3.7407815724955533,
+      "RMSE_std": 0.5973724522683225
+    },
+    "delta": {
+      "R2_gain": 0.0007594487233214542,
+      "RMSE_drop": 0.04072811743619287
+    },
+    "is_better": true
+  },
+  "fallback_events": [
+    {
+      "iteration": "Iter-2",
+      "trigger": "two_consecutive_no_improvement",
+      "phase3": {
+        "level1": "executed",
+        "level2": "not_executed_in_code",
+        "level3": "not_executed_in_code",
+        "level4": "blocked"
+      }
+    },
+    {
+      "iteration": "Iter-4",
+      "trigger": "two_consecutive_no_improvement",
+      "phase3": {
+        "level1": "executed",
+        "level2": "not_executed_in_code",
+        "level3": "not_executed_in_code",
+        "level4": "blocked"
+      }
+    }
+  ],
+  "training_time_sec": 463.08256619999884
+}
