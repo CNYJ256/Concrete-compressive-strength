@@ -1,0 +1,44 @@
+{
+  "reference_optimized_adaboost": {
+    "train_metrics": {
+      "R2": 0.9732118990373376,
+      "RMSE": 2.7386631168305744,
+      "MAPE": 8.399117570070015,
+      "MAE": 2.129391039120327
+    },
+    "test_metrics": {
+      "R2": 0.9198682290978413,
+      "RMSE": 4.616129190532162,
+      "MAPE": 13.291148007882745,
+      "MAE": 3.608503734173901
+    },
+    "fit_time_sec": 0.619228399998974
+  },
+  "new_techpath_stacking": {
+    "train_metrics": {
+      "R2": 0.990404270808231,
+      "RMSE": 1.6391044933885792,
+      "MAPE": 3.2876148513343697,
+      "MAE": 0.9647736466103293
+    },
+    "test_metrics": {
+      "R2": 0.9497103385625518,
+      "RMSE": 3.6569156274769776,
+      "MAPE": 8.698663467779284,
+      "MAE": 2.639560689174028
+    },
+    "fit_time_sec": 6.038648200046737
+  },
+  "comparison": {
+    "R2_change_pct": 3.244172175569203,
+    "RMSE_improve_pct": 20.779608225536744,
+    "MAPE_improve_pct": 34.552956102245226,
+    "MAE_improve_pct": 26.851656910825632
+  },
+  "notes": {
+    "tech_path": "Stacking(HGB + ExtraTrees + SVR -> Ridge)",
+    "same_split": true,
+    "random_state": 42,
+    "previous_optimization_file_loaded": true
+  }
+}

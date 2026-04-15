@@ -1,0 +1,23 @@
+{
+  "version": "v2",
+  "strategy": "Enhanced interaction features + ExtraTrees",
+  "cv_10fold": {
+    "R2_mean": 0.9254273555039619,
+    "R2_std": 0.02174561551474566,
+    "RMSE_mean": 4.477608677603752,
+    "RMSE_std": 0.6599811639371432,
+    "fit_time_mean_sec": 0.8864169597625733,
+    "score_time_mean_sec": 0.27905025482177737
+  },
+  "compare_to_v1": {
+    "v1": {
+      "R2_mean": 0.9152057194356786,
+      "RMSE_mean": 4.7991227813821125
+    },
+    "delta": {
+      "R2_gain": 0.010221636068283302,
+      "RMSE_drop": 0.32151410377836065
+    },
+    "is_better": true
+  }
+}
