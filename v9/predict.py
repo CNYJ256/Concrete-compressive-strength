@@ -5,6 +5,9 @@ from __future__ import annotations
 支持两种输入格式：
 1) 标准列名（cement/slag/.../age）；
 2) UCI 原始英文列名（自动映射到标准列）。
+
+默认行为：
+未传入输入文件时，直接使用 `data/Concrete_Data.xls` 的原始数据（全量样本）进行推理。
 """
 
 import logging
@@ -88,11 +91,11 @@ def normalize_input_columns(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def build_demo_input(data_path: Path, n: int = 5) -> pd.DataFrame:
-    """构造默认演示输入（数据集前 n 行）。"""
+def build_default_input(data_path: Path) -> pd.DataFrame:
+    """构造默认输入（原始数据集全量样本）。"""
     df = pd.read_excel(data_path, engine="xlrd")
     df = df.rename(columns=RAW_TO_STD_COLUMN_MAP)
-    return df[BASE_FEATURES].head(n).copy()
+    return df[BASE_FEATURES].copy()
 
 
 def predict_with_bundle(bundle: dict, base: pd.DataFrame) -> np.ndarray:
@@ -161,14 +164,14 @@ def main() -> None:
         input_path = Path(sys.argv[1]) if len(sys.argv) >= 2 else None
         output_path = Path(sys.argv[2]) if len(sys.argv) >= 3 else paths["output"]
 
-        # 3) 读取输入数据（外部 CSV 或默认 demo）。
+        # 3) 读取输入数据（外部 CSV 或默认原始数据）。
         if input_path is not None:
             logger.info("读取外部输入: %s", input_path)
             raw = pd.read_csv(input_path)
             base = normalize_input_columns(raw)
         else:
-            logger.info("未提供输入文件，默认使用数据集前5行")
-            base = build_demo_input(paths["data"], n=5)
+            logger.info("未提供输入文件，默认使用原始数据集全量样本: %s", paths["data"])
+            base = build_default_input(paths["data"])
 
         # 4) 执行融合预测并输出结果 CSV。
         pred = predict_with_bundle(bundle, base)

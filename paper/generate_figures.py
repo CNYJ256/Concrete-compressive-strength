@@ -10,6 +10,14 @@ import numpy as np
 matplotlib.use("Agg")
 
 
+MODEL_DISPLAY_NAME = {
+    "XGBoost_v8": "XGBoost",
+    "LightGBM_v8": "LightGBM",
+    "HGB_v8": "HGB",
+    "HGB_v7_baseline": "HGB-Anchor",
+}
+
+
 def load_json(path: Path) -> dict:
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
@@ -58,6 +66,7 @@ def plot_v9_piecewise_weights(v9: dict, out_dir: Path) -> Path:
     global_w = v9["global_blend"]["weights"]
 
     models = list(early.keys())
+    labels = [MODEL_DISPLAY_NAME.get(m, m) for m in models]
     x = np.arange(len(models))
     width = 0.24
 
@@ -69,7 +78,7 @@ def plot_v9_piecewise_weights(v9: dict, out_dir: Path) -> Path:
     ax.set_title("v9 Weight Distribution by Age Segment")
     ax.set_ylabel("Weight")
     ax.set_xticks(x)
-    ax.set_xticklabels(models, rotation=15)
+    ax.set_xticklabels(labels, rotation=15)
     ax.grid(axis="y", alpha=0.3)
     ax.legend()
 
@@ -80,38 +89,28 @@ def plot_v9_piecewise_weights(v9: dict, out_dir: Path) -> Path:
     return out
 
 
-def plot_version_comparison(v8: dict, v9: dict, out_dir: Path) -> Path:
-    v7_r2 = v8["baseline_v7"]["R2_mean"]
-    v7_rmse = v8["baseline_v7"]["RMSE_mean"]
-    v8_r2 = v8["best_model"]["cv_10fold"]["R2_mean"]
-    v8_rmse = v8["best_model"]["cv_10fold"]["RMSE_mean"]
-    v9_r2 = v9["best_model"]["cv_10fold"]["R2_mean"]
-    v9_rmse = v9["best_model"]["cv_10fold"]["RMSE_mean"]
+def plot_v9_base_model_oof(v9: dict, out_dir: Path) -> Path:
+    per_model = v9["per_model_oof"]
+    model_ids = [item["model_id"] for item in per_model]
+    labels = [MODEL_DISPLAY_NAME.get(mid, mid) for mid in model_ids]
+    r2_vals = [item["cv_10fold"]["R2_mean"] for item in per_model]
+    rmse_vals = [item["cv_10fold"]["RMSE_mean"] for item in per_model]
 
-    versions = ["v7", "v8", "v9"]
-    r2_vals = [v7_r2, v8_r2, v9_r2]
-    rmse_vals = [v7_rmse, v8_rmse, v9_rmse]
-    x = np.arange(len(versions))
+    x = np.arange(len(model_ids))
+    width = 0.36
 
-    fig, ax1 = plt.subplots(figsize=(10, 4.8))
-    ax2 = ax1.twinx()
+    fig, ax = plt.subplots(figsize=(11.5, 4.8))
+    ax.bar(x - width / 2, r2_vals, width=width, label="R² mean", color="#4C78A8")
+    ax.bar(x + width / 2, rmse_vals, width=width, label="RMSE mean", color="#E45756")
 
-    ax1.plot(x, r2_vals, marker="o", linewidth=2.2, color="#4C78A8", label="R²")
-    ax2.plot(x, rmse_vals, marker="s", linewidth=2.2, color="#E45756", label="RMSE")
-
-    ax1.set_xticks(x)
-    ax1.set_xticklabels(versions)
-    ax1.set_ylabel("R² mean", color="#4C78A8")
-    ax2.set_ylabel("RMSE mean", color="#E45756")
-    ax1.set_title("Performance Evolution from v7 to v9")
-    ax1.grid(axis="y", alpha=0.3)
-
-    lines1, labels1 = ax1.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines1 + lines2, labels1 + labels2, loc="center right")
+    ax.set_title("v9 Base Learners OOF Performance (10-fold)")
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=15)
+    ax.grid(axis="y", alpha=0.3)
+    ax.legend()
 
     fig.tight_layout()
-    out = out_dir / "fig_version_performance_evolution.png"
+    out = out_dir / "fig_v9_base_models_oof.png"
     fig.savefig(out, dpi=180)
     plt.close(fig)
     return out
@@ -149,7 +148,6 @@ def main() -> None:
     out_dir = ensure_output_dir()
 
     v9 = load_json(root / "v9" / "metrics.json")
-    v8 = load_json(root / "oldversion" / "v8" / "metrics.json")
 
     # 复现实验脚本当前将结果输出到根目录 doc/。
     baseline = load_json(root / "doc" / "baseline_results.json")
@@ -157,7 +155,7 @@ def main() -> None:
     generated = [
         plot_v9_strategy_comparison(v9, out_dir),
         plot_v9_piecewise_weights(v9, out_dir),
-        plot_version_comparison(v8, v9, out_dir),
+        plot_v9_base_model_oof(v9, out_dir),
         plot_v9_vs_paper1_baselines(baseline, v9, out_dir),
     ]
 
