@@ -1,28 +1,38 @@
-# 混凝土抗压强度预测：AdaBoost 复现与 ACDCB 方法
+# Concrete-compressive-strength
 
-本仓库聚焦**混凝土抗压强度预测**任务，主线为：
+混凝土抗压强度预测研究仓库（论文复现 + ACDCB 方法）。
 
-1. 复现原论文（AdaBoost/ANN/SVM）；
-2. 在相同数据集与可复现评估协议下，训练新模型；
-3. 对比原论文方法与新模型的性能差异并输出图表与论文材料。
+本仓库提供了一种新的集成学习方法 ACDCB（Age-aware Constrained Dual-space Boosting），并与参考论文结果进行了系统对比。目录结构清晰划分了数据、代码、文档与结果，便于复现与扩展。
 
-## 1. 项目背景
+## 目录结构
 
-混凝土抗压强度受水泥、矿渣、粉煤灰、水、外加剂、骨料和龄期等因素共同影响，属于典型高维非线性回归问题。传统单模型方法在复杂分布下容易出现泛化受限。`ACDCB` 在原论文复现基线之上提出并实现了**龄期条件化双空间约束融合**（Age-Conditioned Dual-Space Constrained Blending, **ACDCB**），目标是在保持稳定性的同时进一步提升预测精度。
+```text
+.
+├── configs/                    # 实验配置（代码与超参数分离）
+├── data/                       # 数据目录（原始数据 + 占位说明）
+├── docs/                       # 文档目录
+│   ├── reports/                # 实验报告（Markdown）
+│   ├── papers/                 # 论文文档（Markdown/PDF）
+│   └── prompt.md               # 研究提示与备忘
+├── results/                    # 运行产物目录（模型/指标/预测）
+├── src/
+│   └── concrete_compressive_strength/
+│       ├── __init__.py
+│       ├── core.py             # ACDCB 核心算法模块
+│       ├── plotting/           # 图表生成脚本
+│       └── reproduction/       # 论文复现脚本
+├── scripts/
+│   ├── train/                  # 训练脚本
+│   ├── eval/                   # 评估与推理脚本
+│   ├── preprocess/             # 数据预处理脚本
+│   └── *.py                    # 论文复现复用模块
+├── requirements.txt
+└── README.md
+```
 
-## 2. 仓库结构（主线）
-
-- `data/`：原始数据集（`Concrete_Data.xls`）
-- `scripts/`：公共模块（配置、数据加载、指标、模型工厂）
-- `paper1/`：原论文复现脚本与说明
-- `doc/`：复现与对比结果（JSON/Markdown 报告）
-- `v9/`：主版本训练、推理、模型与指标
-- `paper/`：论文写作与图表生成脚本
-
-## 3. 依赖环境配置
+## 环境要求
 
 - Python 3.9+
-- 建议使用虚拟环境
 
 安装依赖：
 
@@ -30,109 +40,84 @@
 pip install -r requirements.txt
 ```
 
-`requirements.txt` 已包含核心依赖：`numpy`、`pandas`、`scipy`、`scikit-learn`、`xlrd`、`joblib`、`optuna`、`xgboost`、`lightgbm`、`matplotlib`。
+## 运行入口
 
-## 4. 核心运行步骤
-
-### 4.1 复现 paper1 基线
+### 1) 数据预处理/校验
 
 ```bash
-python paper1/scripts/reproduce_pipeline.py
+python scripts/preprocess/prepare_dataset.py
 ```
 
-输出文件：
+输出：`results/metrics/dataset_profile.json`
 
-- `doc/baseline_results.json`
-- `doc/Baseline_Reproduction_Report.md`
-
-### 4.2 训练 v9 模型
+### 2) 训练 ACDCB
 
 ```bash
-python v9/train.py
+python scripts/train/train_acdcb.py
 ```
 
-输出文件：
-
-- `v9/model.joblib`
-- `v9/metrics.json`
-
-### 4.3 执行 v9 推理
+可选：指定配置文件
 
 ```bash
-python v9/predict.py
+python scripts/train/train_acdcb.py configs/acdcb_default.json
 ```
 
-默认行为：无输入参数时直接读取原始数据 `data/Concrete_Data.xls`（全量样本）进行推理。  
-输出文件：`v9/predictions.csv`
+输出：
 
-可选自定义输入：
+- `results/models/acdcb_model.joblib`
+- `results/metrics/acdcb_metrics.json`
+
+### 3) 推理 ACDCB
 
 ```bash
-python v9/predict.py your_input.csv your_output.csv
+python scripts/eval/predict_acdcb.py
 ```
 
-### 4.4 生成论文图表
+可选：自定义输入输出
 
 ```bash
-python paper/generate_figures.py
+python scripts/eval/predict_acdcb.py your_input.csv your_output.csv
 ```
 
-输出目录：`paper/figures/`
+默认输出：`results/predictions/acdcb_predictions.csv`
 
-## 5. 新模型相对原论文的主要改进
+### 4) ACDCB 消融实验
 
-相对于原文中的单模型路径（AdaBoost/ANN/SVM），新模型的核心改进包括：
+```bash
+python scripts/eval/ablation_acdcb.py
+```
 
-1. **年龄感知分段融合（Age-aware Piecewise Blend）**  
-  对 `age <= 28` 与 `age > 28` 两个区间分别学习融合权重，降低不同龄期分布差异对单一模型的影响。
+输出：
 
-  该训练范式在 `v9` 中学术命名为：**ACDCB（Age-Conditioned Dual-Space Constrained Blending）**。
+- `results/metrics/ablation_results_acdcb.json`
+- `results/predictions/ablation_oof_predictions.csv`
 
-2. **多基学习器协同**  
-  采用多模型加权组合，而非单一回归器，提升对复杂非线性关系的覆盖能力。
+### 5) 论文复现脚本
 
-3. **统一可复现实验协议**  
-  使用固定随机种子与 10 折 KFold（`shuffle=True, random_state=42`），并将关键指标落盘，保证结果可复核。
+```bash
+python src/concrete_compressive_strength/reproduction/paper1_reproduce.py
+python src/concrete_compressive_strength/reproduction/paper2_reproduce.py
+```
 
-## 6. 模型结果简要展示（真实运行数据）
+输出将写入：
 
-数据来源：`doc/baseline_results.json` 与 `v9/metrics.json`
+- `results/metrics/*.json`
+- `docs/reports/*.md`
 
-### 6.1 paper1 复现结果
+### 6) 生成图表
 
-| 模型 | 测试集 R² | 测试集 RMSE |
-|---|---:|---:|
-| AdaBoost | 0.8929 | 5.3365 |
-| ANN | 0.9160 | 4.7273 |
-| SVM | 0.8713 | 5.8492 |
+```bash
+python src/concrete_compressive_strength/plotting/generate_acdcb_figures.py
+python src/concrete_compressive_strength/plotting/generate_comparison_figures.py
+```
 
-`paper1` AdaBoost 的 10 折结果：
+输出目录：`figures/`
 
-- R²_mean = **0.9090**
-- RMSE_mean = **4.9695**
-- MAE_mean = **3.5085**
-- MAPE_mean = **13.3513%**
+## 数据来源与引用
 
-### 6.2 v9 结果（10 折）
+- UCI Concrete Compressive Strength（1030 样本，8输入，1输出）
+- Yeh, I. (1998). *Concrete Compressive Strength* [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5PK67
 
-- R²_mean = **0.9488**
-- RMSE_mean = **3.6996**
-- MAE_mean = **2.3522**
-- MAPE_mean = **8.4878%**
+## License
 
-### 6.3 v9 相对 paper1（AdaBoost 10 折）提升
-
-- R² 提升：**+0.0398**
-- RMSE 降低：**-1.2699 MPa**（约 **25.55%**）
-- MAE 降低：**-1.1564 MPa**
-- MAPE 降低：**-4.8635%**
-
-## 7. 数据与引用
-
-- 数据集：UCI Concrete Compressive Strength（1030 样本、8 输入特征、1 输出）
-- 推荐引用：Yeh, I. (1998). *Concrete Compressive Strength* [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5PK67
-- 数据许可：CC BY 4.0
-
-## 8. 许可证
-
-- 代码许可：MIT License（见 `LICENSE`）
+MIT（见 `LICENSE`）

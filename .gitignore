@@ -1,5 +1,79 @@
-v9/model.joblib
+# =========================
+# Python cache & bytecode
+# =========================
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+
+# =========================
+# Build / packaging
+# =========================
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# =========================
+# Virtual environments
+# =========================
+.venv/
+venv/
+env/
+ENV/
+
+# =========================
+# Jupyter
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# IDE / OS
+# =========================
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
 ~$*
 *.pptx
+
+# =========================
+# ML / experiment artifacts
+# =========================
+*.joblib
+*.pkl
+*.pth
+*.pt
+*.onnx
+logs/
+outputs/
+wandb/
+mlruns/
+
+# 统一实验产物目录（保留目录占位）
+results/**
+!results/
+!results/models/
+!results/metrics/
+!results/predictions/
+!results/models/.gitkeep
+!results/metrics/.gitkeep
+!results/predictions/.gitkeep
+
+# 预处理中间文件（保留占位）
+data/processed/**
+!data/processed/.gitkeep
+
+# 图像产物（可复现生成，不入库）
+figures/*.png
+paper/figures/*.png
+
+# Legacy temporary artifacts
+ACDCB/*.json
+ACDCB/*.csv
+ACDCB/*.joblib
+oldversion/

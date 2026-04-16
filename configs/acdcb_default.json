@@ -1,0 +1,46 @@
+{
+  "method_name": "ACDCB",
+  "age_split_day": 28,
+  "model_params": {
+    "XGBoost": {
+      "n_estimators": 1482,
+      "learning_rate": 0.044604576412178736,
+      "max_depth": 4,
+      "min_child_weight": 7.394621020486849,
+      "subsample": 0.6642601673434315,
+      "colsample_bytree": 0.6247108136598432,
+      "gamma": 2.4343952947126315,
+      "reg_alpha": 0.49332537524084563,
+      "reg_lambda": 3.0210800926855668
+    },
+    "LightGBM": {
+      "n_estimators": 2127,
+      "learning_rate": 0.031969519083032506,
+      "num_leaves": 32,
+      "max_depth": 4,
+      "min_child_samples": 8,
+      "subsample": 0.838331183259241,
+      "colsample_bytree": 0.5905247550993065,
+      "reg_alpha": 0.7113890443035059,
+      "reg_lambda": 0.0002216693328024357,
+      "min_split_gain": 0.006463967504229284
+    },
+    "HGB": {
+      "learning_rate": 0.05678535332386602,
+      "max_iter": 1809,
+      "max_depth": 12,
+      "max_leaf_nodes": 15,
+      "min_samples_leaf": 14,
+      "l2_regularization": 4.580924468859991e-05,
+      "max_bins": 213
+    },
+    "ANCHOR_HGB": {
+      "learning_rate": 0.028,
+      "max_iter": 2400,
+      "max_depth": null,
+      "max_leaf_nodes": 15,
+      "min_samples_leaf": 6,
+      "l2_regularization": 0.001
+    }
+  }
+}

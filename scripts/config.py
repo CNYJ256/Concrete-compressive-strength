@@ -1,9 +1,8 @@
-"""
-全局配置文件。
+"""全局配置文件。
 
 说明：
-- 统一维护数据路径、列名映射、随机种子与模型参数。
-- 这样做的好处是：后续调参或换数据时，只改这一处即可。
+- 统一维护数据路径、随机种子与模型参数；
+- 统一约束实验产物输出目录，避免结果散落在源码目录。
 """
 
 from pathlib import Path
@@ -13,13 +12,23 @@ from pathlib import Path
 # =========================
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = PROJECT_ROOT / "data" / "Concrete_Data.xls"
-DOC_DIR = PROJECT_ROOT / "doc"
 
-BASELINE_RESULT_MD = DOC_DIR / "Baseline_Reproduction_Report.md"
-BASELINE_RESULT_JSON = DOC_DIR / "baseline_results.json"
+DOC_DIR = PROJECT_ROOT / "docs"
+DOC_REPORT_DIR = DOC_DIR / "reports"
 
-OPT_RESULT_MD = DOC_DIR / "Optimization_Comparison_Report.md"
-OPT_RESULT_JSON = DOC_DIR / "optimization_results.json"
+RESULTS_DIR = PROJECT_ROOT / "results"
+RESULTS_MODELS_DIR = RESULTS_DIR / "models"
+RESULTS_METRICS_DIR = RESULTS_DIR / "metrics"
+RESULTS_PREDICTIONS_DIR = RESULTS_DIR / "predictions"
+
+BASELINE_RESULT_MD = DOC_REPORT_DIR / "Baseline_Reproduction_Report.md"
+BASELINE_RESULT_JSON = RESULTS_METRICS_DIR / "baseline_results.json"
+
+PAPER2_RESULT_MD = DOC_REPORT_DIR / "Paper2_Reproduction_Report.md"
+PAPER2_RESULT_JSON = RESULTS_METRICS_DIR / "paper2_reproduction_results.json"
+
+OPT_RESULT_MD = DOC_REPORT_DIR / "Optimization_Comparison_Report.md"
+OPT_RESULT_JSON = RESULTS_METRICS_DIR / "optimization_results.json"
 
 # =========================
 # 实验配置
