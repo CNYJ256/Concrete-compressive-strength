@@ -117,27 +117,28 @@ def plot_version_comparison(v8: dict, v9: dict, out_dir: Path) -> Path:
     return out
 
 
-def plot_reproduction_summary(baseline: dict, paper2: dict, out_dir: Path) -> Path:
+def plot_v9_vs_paper1_baselines(baseline: dict, v9: dict, out_dir: Path) -> Path:
     p1_models = ["AdaBoost", "ANN", "SVM"]
     p1_test_r2 = [baseline["models"][m]["test_metrics"]["R2"] for m in p1_models]
 
-    p2_models = ["ANN", "Reg_w_b", "Reg_w_c"]
-    p2_mean_r2 = [paper2["source_like_summary"][m]["test_R2_mean"] for m in p2_models]
+    adaboost_cv_r2 = baseline["adaboost_cv_10fold"]["R2_mean"]
+    v9_cv_r2 = v9["best_model"]["cv_10fold"]["R2_mean"]
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
 
     axes[0].bar(p1_models, p1_test_r2, color=["#4C78A8", "#F58518", "#54A24B"])
-    axes[0].set_title("Paper1 Reproduction: Test R²")
+    axes[0].set_title("Paper1 Baselines (Single Split Test R²)")
     axes[0].set_ylabel("R²")
     axes[0].grid(axis="y", alpha=0.3)
 
-    axes[1].bar(["ANN", "Reg(w/b)", "Reg(w/c)"], p2_mean_r2, color=["#4C78A8", "#F58518", "#E45756"])
-    axes[1].set_title("Paper2 Reproduction: Source-like Mean Test R²")
+    axes[1].bar(["Paper1 AdaBoost (10-fold)", "v9 (10-fold)"], [adaboost_cv_r2, v9_cv_r2], color=["#4C78A8", "#E45756"])
+    axes[1].set_title("Core Benchmark: Paper1 vs v9 (10-fold R²)")
     axes[1].set_ylabel("R²")
+    axes[1].tick_params(axis="x", labelrotation=12)
     axes[1].grid(axis="y", alpha=0.3)
 
     fig.tight_layout()
-    out = out_dir / "fig_reproduction_summary.png"
+    out = out_dir / "fig_v9_vs_paper1_baselines.png"
     fig.savefig(out, dpi=180)
     plt.close(fig)
     return out
@@ -152,13 +153,12 @@ def main() -> None:
 
     # 复现实验脚本当前将结果输出到根目录 doc/。
     baseline = load_json(root / "doc" / "baseline_results.json")
-    paper2 = load_json(root / "doc" / "paper2_reproduction_results.json")
 
     generated = [
         plot_v9_strategy_comparison(v9, out_dir),
         plot_v9_piecewise_weights(v9, out_dir),
         plot_version_comparison(v8, v9, out_dir),
-        plot_reproduction_summary(baseline, paper2, out_dir),
+        plot_v9_vs_paper1_baselines(baseline, v9, out_dir),
     ]
 
     print("Generated figures:")
