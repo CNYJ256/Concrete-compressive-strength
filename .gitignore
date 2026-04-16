@@ -1,3 +1,5 @@
 v9/model.joblib
 __pycache__/
 *.pyc
+~$*
+*.pptx
