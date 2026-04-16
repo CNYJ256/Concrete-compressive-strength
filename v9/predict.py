@@ -23,21 +23,12 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-# 归档后从 oldversion.v8 复用与训练一致的特征工程逻辑，保证训练-推理口径一致。
-from oldversion.v8.train import BASE_FEATURES, feature_engineering, feature_engineering_v7
-
-
-# UCI 原始列名 -> 项目标准列名映射。
-RAW_TO_STD_COLUMN_MAP = {
-    "Cement (component 1)(kg in a m^3 mixture)": "cement",
-    "Blast Furnace Slag (component 2)(kg in a m^3 mixture)": "slag",
-    "Fly Ash (component 3)(kg in a m^3 mixture)": "fly_ash",
-    "Water  (component 4)(kg in a m^3 mixture)": "water",
-    "Superplasticizer (component 5)(kg in a m^3 mixture)": "superplasticizer",
-    "Coarse Aggregate  (component 6)(kg in a m^3 mixture)": "coarse_agg",
-    "Fine Aggregate (component 7)(kg in a m^3 mixture)": "fine_agg",
-    "Age (day)": "age",
-}
+from v9.core import (  # noqa: E402
+    BASE_FEATURES,
+    RAW_TO_STD_COLUMN_MAP,
+    feature_engineering,
+    feature_engineering_anchor,
+)
 
 
 def get_logger() -> logging.Logger:
@@ -107,15 +98,20 @@ def predict_with_bundle(bundle: dict, base: pd.DataFrame) -> np.ndarray:
     models: dict = bundle["models"]
     model_spaces: dict = bundle["model_spaces"]
 
-    # 同时构造 v8/v7 两套特征空间，供不同子模型按需选用。
-    fe_v8 = feature_engineering(base).reindex(columns=bundle["feature_columns_v8"])
-    fe_v7 = feature_engineering_v7(base).reindex(columns=bundle["feature_columns_v7"])
+    # 构造主特征空间与锚点特征空间（兼容新旧模型包字段）。
+    primary_cols = bundle.get("feature_columns_primary", bundle.get("feature_columns_v8"))
+    anchor_cols = bundle.get("feature_columns_anchor", bundle.get("feature_columns_v7"))
+    if primary_cols is None or anchor_cols is None:
+        raise ValueError("模型包缺少特征列定义（primary/anchor）")
+
+    fe_primary = feature_engineering(base).reindex(columns=primary_cols)
+    fe_anchor = feature_engineering_anchor(base).reindex(columns=anchor_cols)
 
     # 先分别得到每个子模型的预测结果，再进行加权融合。
     per_model_pred: dict[str, np.ndarray] = {}
     for model_id, model in models.items():
-        fs = model_spaces.get(model_id, "v8")
-        x_used = fe_v7 if fs == "v7" else fe_v8
+        fs = model_spaces.get(model_id, "primary")
+        x_used = fe_anchor if fs in {"anchor", "v7"} else fe_primary
         per_model_pred[model_id] = np.asarray(model.predict(x_used), dtype=float)
 
     pred = np.zeros(len(base), dtype=float)

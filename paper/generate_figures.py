@@ -15,6 +15,10 @@ MODEL_DISPLAY_NAME = {
     "LightGBM_v8": "LightGBM",
     "HGB_v8": "HGB",
     "HGB_v7_baseline": "HGB-Anchor",
+    "XGBoost": "XGBoost",
+    "LightGBM": "LightGBM",
+    "HGB": "HGB",
+    "HGB_Anchor": "HGB-Anchor",
 }
 
 

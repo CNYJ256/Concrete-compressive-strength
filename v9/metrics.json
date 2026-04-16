@@ -1,6 +1,7 @@
 {
   "version": "v9",
-  "strategy": "Age-aware piecewise weighted blending with v7 anchor",
+  "method_name_zh": "龄期条件化双空间约束融合（Age-Conditioned Dual-Space Constrained Blending, ACDCB）",
+  "method_name_en": "Age-Conditioned Dual-Space Constrained Blending (ACDCB)",
   "cv_protocol": {
     "type": "KFold",
     "n_splits": 10,
@@ -10,9 +11,9 @@
   "age_split_day": 28,
   "per_model_oof": [
     {
-      "model_id": "XGBoost_v8",
+      "model_id": "XGBoost",
       "model_family": "XGBoost",
-      "feature_space": "v8",
+      "feature_space": "primary",
       "best_params": {
         "n_estimators": 1482,
         "learning_rate": 0.044604576412178736,
@@ -29,13 +30,17 @@
         "R2_std": 0.02244575490659121,
         "RMSE_mean": 3.7816600940647738,
         "RMSE_std": 0.7085652870079042,
-        "oof_time_sec": 2.062798400002066
+        "MAE_mean": 2.461770029901897,
+        "MAE_std": 0.23606116875777292,
+        "MAPE_mean": 8.92945839966443,
+        "MAPE_std": 1.3824878589771639,
+        "oof_time_sec": 2.044170800014399
       }
     },
     {
-      "model_id": "LightGBM_v8",
+      "model_id": "LightGBM",
       "model_family": "LightGBM",
-      "feature_space": "v8",
+      "feature_space": "primary",
       "best_params": {
         "n_estimators": 2127,
         "learning_rate": 0.031969519083032506,
@@ -53,13 +58,17 @@
         "R2_std": 0.0208815983369301,
         "RMSE_mean": 3.8051955588923327,
         "RMSE_std": 0.6612680212227552,
-        "oof_time_sec": 5.872962799970992
+        "MAE_mean": 2.47985925946821,
+        "MAE_std": 0.2615005584069635,
+        "MAPE_mean": 8.877980305666748,
+        "MAPE_std": 1.5453842427540674,
+        "oof_time_sec": 6.063299199973699
       }
     },
     {
-      "model_id": "HGB_v8",
+      "model_id": "HGB",
       "model_family": "HGB",
-      "feature_space": "v8",
+      "feature_space": "primary",
       "best_params": {
         "learning_rate": 0.05678535332386602,
         "max_iter": 1809,
@@ -74,13 +83,17 @@
         "R2_std": 0.021505422092629654,
         "RMSE_mean": 3.808983851079879,
         "RMSE_std": 0.703931674950154,
-        "oof_time_sec": 1.4920974999549799
+        "MAE_mean": 2.425909063090292,
+        "MAE_std": 0.30655025208595515,
+        "MAPE_mean": 8.716526247272268,
+        "MAPE_std": 1.5618233607833756,
+        "oof_time_sec": 1.6022029000450857
       }
     },
     {
-      "model_id": "HGB_v7_baseline",
+      "model_id": "HGB_Anchor",
       "model_family": "HGB",
-      "feature_space": "v7",
+      "feature_space": "anchor",
       "best_params": {
         "learning_rate": 0.028,
         "max_iter": 2400,
@@ -94,42 +107,54 @@
         "R2_std": 0.017761603564915886,
         "RMSE_mean": 3.7407815724955533,
         "RMSE_std": 0.5973724522683225,
-        "oof_time_sec": 1.8132366999634542
+        "MAE_mean": 2.368324992862602,
+        "MAE_std": 0.2007211801439988,
+        "MAPE_mean": 8.528879267971492,
+        "MAPE_std": 1.179090815965659,
+        "oof_time_sec": 1.7093059999751858
       }
     }
   ],
   "global_blend": {
     "weights": {
-      "XGBoost_v8": 0.3432453845357805,
-      "LightGBM_v8": 0.025427700903462577,
-      "HGB_v8": 0.04110886060444506,
-      "HGB_v7_baseline": 0.5902180539563119
+      "XGBoost": 0.3432453845357805,
+      "LightGBM": 0.025427700903462577,
+      "HGB": 0.04110886060444506,
+      "HGB_Anchor": 0.5902180539563119
     },
     "cv_10fold": {
       "R2_mean": 0.9487248476543358,
       "R2_std": 0.01947160146784409,
       "RMSE_mean": 3.700053449896926,
-      "RMSE_std": 0.6449536124479154
+      "RMSE_std": 0.6449536124479154,
+      "MAE_mean": 2.351103885756617,
+      "MAE_std": 0.2152708782042324,
+      "MAPE_mean": 8.487401569022335,
+      "MAPE_std": 1.2324353829125254
     }
   },
   "age_piecewise_blend": {
     "early_weights": {
-      "XGBoost_v8": 0.31381268492611464,
-      "LightGBM_v8": 0.0399295998987692,
-      "HGB_v8": 0.013238754015929045,
-      "HGB_v7_baseline": 0.6330189611591871
+      "XGBoost": 0.31381268492611464,
+      "LightGBM": 0.0399295998987692,
+      "HGB": 0.013238754015929045,
+      "HGB_Anchor": 0.6330189611591871
     },
     "late_weights": {
-      "XGBoost_v8": 0.4632237881293413,
-      "LightGBM_v8": 0.0,
-      "HGB_v8": 0.12216657692210567,
-      "HGB_v7_baseline": 0.414609634948553
+      "XGBoost": 0.4632237881293413,
+      "LightGBM": 0.0,
+      "HGB": 0.12216657692210567,
+      "HGB_Anchor": 0.414609634948553
     },
     "cv_10fold": {
       "R2_mean": 0.9487551869626101,
       "R2_std": 0.01932295152899543,
       "RMSE_mean": 3.699571199563451,
-      "RMSE_std": 0.6406700830540204
+      "RMSE_std": 0.6406700830540204,
+      "MAE_mean": 2.3521528470609794,
+      "MAE_std": 0.21233054453843522,
+      "MAPE_mean": 8.487811193804392,
+      "MAPE_std": 1.2301774465352762
     }
   },
   "best_model": {
@@ -138,36 +163,27 @@
       "R2_mean": 0.9487551869626101,
       "R2_std": 0.01932295152899543,
       "RMSE_mean": 3.699571199563451,
-      "RMSE_std": 0.6406700830540204
+      "RMSE_std": 0.6406700830540204,
+      "MAE_mean": 2.3521528470609794,
+      "MAE_std": 0.21233054453843522,
+      "MAPE_mean": 8.487811193804392,
+      "MAPE_std": 1.2301774465352762
     }
   },
-  "compare_to_v8": {
-    "v8": {
-      "R2_mean": 0.9487248477451174,
-      "R2_std": 0.01947160031411161,
-      "RMSE_mean": 3.7000534550593605,
-      "RMSE_std": 0.6449535831056885,
-      "fit_time_mean_sec": 1.1679182399937418,
-      "score_time_mean_sec": 0.0
+  "training_time_sec": 19.303713199973572,
+  "compare_to_paper1": {
+    "paper1_adaboost_cv_10fold": {
+      "R2_mean": 0.9090028138944095,
+      "RMSE_mean": 4.96947067496579,
+      "MAE_mean": 3.5085349786174986,
+      "MAPE_mean": 13.351333227969098
     },
     "delta": {
-      "R2_gain": 3.033921749262536e-05,
-      "RMSE_drop": 0.0004822554959096337
+      "R2_gain": 0.039752373068200564,
+      "RMSE_drop": 1.2698994754023394,
+      "MAE_drop": 1.1563821315565193,
+      "MAPE_drop": 4.863522034164706
     },
     "is_better": true
-  },
-  "compare_to_v7": {
-    "v7": {
-      "R2_mean": 0.947965399021796,
-      "R2_std": 0.017761603564915886,
-      "RMSE_mean": 3.7407815724955533,
-      "RMSE_std": 0.5973724522683225
-    },
-    "delta": {
-      "R2_gain": 0.0007897879408140795,
-      "RMSE_drop": 0.0412103729321025
-    },
-    "is_better": true
-  },
-  "training_time_sec": 19.01762040000176
+  }
 }

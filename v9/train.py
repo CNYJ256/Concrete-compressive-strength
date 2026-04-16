@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-"""v9 训练脚本：龄期分段自适应加权融合（Age-aware Piecewise Blend）。
+"""v9 训练脚本：龄期条件化双空间约束融合（ACDCB）。
 
-核心思想：
-1. 复用 v8 已验证的三类模型参数（XGB/LGBM/HGB）；
-2. 引入 v7 稳定锚点模型（HGB_v7_baseline）防止融合过拟合；
-3. 分别在“早龄期（<=28天）/后龄期（>28天）”上优化权重；
-4. 与全局单权重融合对比，自动选择最优策略并落盘。
+目标：
+1) 在 v9 内部完成数据加载、特征工程、模型训练与融合；
+2) 不依赖 oldversion 目录；
+3) 输出包含 R2 / RMSE / MAE / MAPE 的 10 折指标。
 """
 
 import json
@@ -27,24 +26,23 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-# 归档后从 oldversion.v8 复用成熟的特征工程与模型构建逻辑。
-from oldversion.v8.train import (
+from v9.core import (  # noqa: E402
+    AGE_SPLIT_DAY,
     BASE_FEATURES,
+    BASE_MODEL_PARAMS,
+    METHOD_NAME_EN,
+    METHOD_NAME_ZH,
     RANDOM_STATE,
     TARGET_COL,
-    V7_BASELINE_HGB_PARAMS,
+    ANCHOR_MODEL_PARAMS,
     build_hgb,
     build_lgbm,
     build_xgb,
     feature_engineering,
-    feature_engineering_v7,
+    feature_engineering_anchor,
     is_better,
     load_data,
 )
-
-
-# 早龄期与后龄期的分段阈值（天）。
-AGE_SPLIT_DAY = 28
 
 
 def get_logger() -> logging.Logger:
@@ -65,59 +63,62 @@ def get_logger() -> logging.Logger:
 
 
 def resolve_paths() -> dict[str, Path]:
-    """统一解析训练所需路径。
-
-    Returns:
-        dict[str, Path]: 项目根目录、数据路径、前序指标路径以及当前版本输出路径。
-    """
+    """统一解析训练阶段路径。"""
     root = Path(__file__).resolve().parents[1]
     return {
         "root": root,
         "data": root / "data" / "Concrete_Data.xls",
-        "prev_v8": root / "oldversion" / "v8" / "metrics.json",
+        "paper1_baseline": root / "doc" / "baseline_results.json",
         "model": root / "v9" / "model.joblib",
         "metrics": root / "v9" / "metrics.json",
     }
 
 
 def rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
-    """计算 RMSE，作为次级优化指标。"""
+    """计算 RMSE。"""
     return float(np.sqrt(np.mean((y_true - y_pred) ** 2)))
 
 
-def fold_metrics(cv: KFold, X_ref: np.ndarray, y: np.ndarray, pred: np.ndarray) -> dict[str, float]:
-    """按给定 CV 切分还原每折指标，并输出均值/标准差。
+def mae(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """计算 MAE。"""
+    return float(np.mean(np.abs(y_true - y_pred)))
 
-    说明：
-    - 这里使用与训练一致的切分器，确保指标口径一致；
-    - `X_ref` 仅用于驱动 `cv.split`，不会参与模型计算。
-    """
+
+def mape_percent(y_true: np.ndarray, y_pred: np.ndarray, eps: float = 1e-8) -> float:
+    """计算百分比 MAPE（单位：%）。"""
+    denom = np.maximum(np.abs(y_true), eps)
+    return float(np.mean(np.abs((y_true - y_pred) / denom)) * 100.0)
+
+
+def fold_metrics(cv: KFold, X_ref: np.ndarray, y: np.ndarray, pred: np.ndarray) -> dict[str, float]:
+    """按给定 CV 切分还原每折指标，并输出均值/标准差。"""
     r2s: list[float] = []
     rmses: list[float] = []
+    maes: list[float] = []
+    mapes: list[float] = []
+
     for _, test_idx in cv.split(X_ref, y):
         yt = y[test_idx]
         yp = pred[test_idx]
         r2s.append(float(r2_score(yt, yp)))
         rmses.append(rmse(yt, yp))
+        maes.append(mae(yt, yp))
+        mapes.append(mape_percent(yt, yp))
 
     return {
         "R2_mean": float(np.mean(r2s)),
         "R2_std": float(np.std(r2s)),
         "RMSE_mean": float(np.mean(rmses)),
         "RMSE_std": float(np.std(rmses)),
+        "MAE_mean": float(np.mean(maes)),
+        "MAE_std": float(np.std(maes)),
+        "MAPE_mean": float(np.mean(mapes)),
+        "MAPE_std": float(np.std(mapes)),
     }
 
 
 def optimize_weights(P: np.ndarray, y: np.ndarray) -> np.ndarray:
-    """在“非负 + 和为1”约束下优化融合权重。
-
-    Args:
-        P: 形状为 (n_samples, n_models) 的 OOF 预测矩阵。
-        y: 真实标签。
-
-    Returns:
-        np.ndarray: 归一化后的最优权重；若优化失败则回退均匀权重。
-    """
+    """在“非负 + 和为1”约束下优化融合权重（目标：最小化 RMSE）。"""
     n_models = P.shape[1]
     init = np.full(n_models, 1.0 / n_models)
 
@@ -138,11 +139,16 @@ def optimize_weights(P: np.ndarray, y: np.ndarray) -> np.ndarray:
 
 
 def compare_to_ref(curr: dict[str, float], ref: dict[str, float]) -> dict[str, float]:
-    """计算与参考方案的增益（R²提升、RMSE下降）。"""
-    return {
+    """计算与参考方案的增益。"""
+    payload = {
         "R2_gain": float(curr["R2_mean"] - ref["R2_mean"]),
         "RMSE_drop": float(ref["RMSE_mean"] - curr["RMSE_mean"]),
     }
+    if "MAE_mean" in ref:
+        payload["MAE_drop"] = float(ref["MAE_mean"] - curr["MAE_mean"])
+    if "MAPE_mean" in ref:
+        payload["MAPE_drop"] = float(ref["MAPE_mean"] - curr["MAPE_mean"])
+    return payload
 
 
 def main() -> None:
@@ -153,65 +159,57 @@ def main() -> None:
     total_start = time.perf_counter()
 
     try:
-        logger.info("===== v9 训练开始：龄期分段自适应融合 =====")
+        logger.info("===== v9 训练开始：%s =====", METHOD_NAME_ZH)
 
-        # 1) 读取 v8 历史最优参数（作为 v9 候选模型池的起点）。
-        prev_v8_payload = json.loads(paths["prev_v8"].read_text(encoding="utf-8"))
-        iter_map = {it["iteration"]: it for it in prev_v8_payload["iteration_results"]}
-
-        p_hgb_v8 = iter_map["Iter-1"]["best_params"]
-        p_xgb_v8 = iter_map["Iter-2"]["best_params"]
-        p_lgb_v8 = iter_map["Iter-3"]["best_params"]
-
-        # 2) 加载原始数据并构造双特征空间（v8 空间 + v7 锚点空间）。
+        # 1) 加载原始数据，构造主特征空间与锚点特征空间。
         df = load_data(paths["data"])
         X_base = df[BASE_FEATURES].copy()
-        X_v8 = feature_engineering(X_base)
-        X_v7 = feature_engineering_v7(X_base)
+        X_primary = feature_engineering(X_base)
+        X_anchor = feature_engineering_anchor(X_base)
         y = df[TARGET_COL].to_numpy()
         age = X_base["age"].to_numpy()
 
-        # 3) 与历史版本保持一致的 10 折随机打乱 KFold。
+        # 2) 与评估协议保持一致的 10 折 KFold。
         cv = KFold(n_splits=10, shuffle=True, random_state=RANDOM_STATE)
 
-        # 4) 定义候选模型池：三类 v8 候选 + 一个 v7 稳定锚点。
+        # 3) 候选模型池：三类主模型 + 一个锚点模型。
         model_defs = [
             {
-                "model_id": "XGBoost_v8",
+                "model_id": "XGBoost",
                 "model_family": "XGBoost",
-                "feature_space": "v8",
-                "best_params": p_xgb_v8,
-                "estimator": build_xgb(p_xgb_v8),
-                "X": X_v8,
+                "feature_space": "primary",
+                "best_params": BASE_MODEL_PARAMS["XGBoost"],
+                "estimator": build_xgb(BASE_MODEL_PARAMS["XGBoost"]),
+                "X": X_primary,
             },
             {
-                "model_id": "LightGBM_v8",
+                "model_id": "LightGBM",
                 "model_family": "LightGBM",
-                "feature_space": "v8",
-                "best_params": p_lgb_v8,
-                "estimator": build_lgbm(p_lgb_v8),
-                "X": X_v8,
+                "feature_space": "primary",
+                "best_params": BASE_MODEL_PARAMS["LightGBM"],
+                "estimator": build_lgbm(BASE_MODEL_PARAMS["LightGBM"]),
+                "X": X_primary,
             },
             {
-                "model_id": "HGB_v8",
+                "model_id": "HGB",
                 "model_family": "HGB",
-                "feature_space": "v8",
-                "best_params": p_hgb_v8,
-                "estimator": build_hgb(p_hgb_v8),
-                "X": X_v8,
+                "feature_space": "primary",
+                "best_params": BASE_MODEL_PARAMS["HGB"],
+                "estimator": build_hgb(BASE_MODEL_PARAMS["HGB"]),
+                "X": X_primary,
             },
             {
-                "model_id": "HGB_v7_baseline",
+                "model_id": "HGB_Anchor",
                 "model_family": "HGB",
-                "feature_space": "v7",
-                "best_params": dict(V7_BASELINE_HGB_PARAMS),
-                "estimator": build_hgb(V7_BASELINE_HGB_PARAMS),
-                "X": X_v7,
+                "feature_space": "anchor",
+                "best_params": dict(ANCHOR_MODEL_PARAMS),
+                "estimator": build_hgb(ANCHOR_MODEL_PARAMS),
+                "X": X_anchor,
             },
         ]
 
         logger.info("生成 OOF 预测用于融合权重优化...")
-        # 5) 对每个候选模型生成 OOF 预测，并记录单模型 CV 统计。
+        # 4) 对每个候选模型生成 OOF 预测，并记录单模型 CV 统计。
         oof_list: list[np.ndarray] = []
         per_model_cv: list[dict[str, Any]] = []
 
@@ -219,7 +217,8 @@ def main() -> None:
             t0 = time.perf_counter()
             pred = cross_val_predict(md["estimator"], md["X"], y, cv=cv, n_jobs=-1, method="predict")
             elapsed = time.perf_counter() - t0
-            metrics = fold_metrics(cv, X_v8.to_numpy(), y, pred)
+
+            metrics = fold_metrics(cv, X_primary.to_numpy(), y, pred)
             metrics["oof_time_sec"] = float(elapsed)
             oof_list.append(pred)
             per_model_cv.append(
@@ -232,21 +231,23 @@ def main() -> None:
                 }
             )
             logger.info(
-                "%s OOF: R2=%.6f, RMSE=%.6f",
+                "%s OOF: R2=%.6f, RMSE=%.6f, MAE=%.6f, MAPE=%.4f%%",
                 md["model_id"],
                 metrics["R2_mean"],
                 metrics["RMSE_mean"],
+                metrics["MAE_mean"],
+                metrics["MAPE_mean"],
             )
 
         P = np.column_stack(oof_list)
         names = [m["model_id"] for m in model_defs]
 
-        # 6) 全局单权重融合。
+        # 5) 全局单权重融合。
         w_global = optimize_weights(P, y)
         pred_global = P @ w_global
-        m_global = fold_metrics(cv, X_v8.to_numpy(), y, pred_global)
+        m_global = fold_metrics(cv, X_primary.to_numpy(), y, pred_global)
 
-        # 7) 龄期分段融合：早龄期 / 后龄期分别优化权重。
+        # 6) 龄期分段融合：早龄期 / 后龄期分别优化权重。
         early_mask = age <= AGE_SPLIT_DAY
         late_mask = ~early_mask
 
@@ -256,26 +257,30 @@ def main() -> None:
         pred_piece = np.empty_like(y, dtype=float)
         pred_piece[early_mask] = P[early_mask] @ w_early
         pred_piece[late_mask] = P[late_mask] @ w_late
-        m_piece = fold_metrics(cv, X_v8.to_numpy(), y, pred_piece)
+        m_piece = fold_metrics(cv, X_primary.to_numpy(), y, pred_piece)
 
         logger.info(
-            "全局融合: R2=%.6f, RMSE=%.6f",
+            "全局融合: R2=%.6f, RMSE=%.6f, MAE=%.6f, MAPE=%.4f%%",
             m_global["R2_mean"],
             m_global["RMSE_mean"],
+            m_global["MAE_mean"],
+            m_global["MAPE_mean"],
         )
         logger.info(
-            "龄期分段融合: R2=%.6f, RMSE=%.6f",
+            "龄期分段融合: R2=%.6f, RMSE=%.6f, MAE=%.6f, MAPE=%.4f%%",
             m_piece["R2_mean"],
             m_piece["RMSE_mean"],
+            m_piece["MAE_mean"],
+            m_piece["MAPE_mean"],
         )
 
-        # 8) 自动选择最优融合策略。
+        # 7) 自动选择最优融合策略。
         best_strategy = "age_piecewise" if is_better(m_piece, m_global) else "global"
         best_metrics = m_piece if best_strategy == "age_piecewise" else m_global
 
         logger.info("最优策略: %s", best_strategy)
 
-        # 9) 在全量数据上拟合候选基模型，用于后续推理阶段。
+        # 8) 在全量数据上拟合候选基模型，用于后续推理阶段。
         fitted_models: dict[str, Any] = {}
         model_spaces: dict[str, str] = {}
         for md in model_defs:
@@ -284,16 +289,16 @@ def main() -> None:
             fitted_models[md["model_id"]] = est
             model_spaces[md["model_id"]] = md["feature_space"]
 
-        # 10) 组织可部署模型包：包含特征列、权重与策略元数据。
+        # 9) 组织可部署模型包：包含特征列、权重与策略元数据。
         model_bundle = {
             "version": "v9",
-            "strategy": "Age-aware piecewise weighted blending with v7 anchor",
+            "method_name_zh": METHOD_NAME_ZH,
+            "method_name_en": METHOD_NAME_EN,
             "model_type": "age_aware_weighted_ensemble",
             "models": fitted_models,
             "model_spaces": model_spaces,
-            "feature_columns": list(X_v8.columns),
-            "feature_columns_v8": list(X_v8.columns),
-            "feature_columns_v7": list(X_v7.columns),
+            "feature_columns_primary": list(X_primary.columns),
+            "feature_columns_anchor": list(X_anchor.columns),
             "base_features": BASE_FEATURES,
             "model_order": names,
             "weights_global": {names[i]: float(w_global[i]) for i in range(len(names))},
@@ -306,15 +311,29 @@ def main() -> None:
         }
         joblib.dump(model_bundle, paths["model"])
 
-        v8_best = prev_v8_payload["best_model"]["cv_10fold"]
-        v7_base = prev_v8_payload["baseline_v7"]
-        delta_v8 = compare_to_ref(best_metrics, v8_best)
-        delta_v7 = compare_to_ref(best_metrics, v7_base)
+        # 10) 与 paper1 AdaBoost 10 折基准做对照（若存在）。
+        compare_to_paper1: dict[str, Any] | None = None
+        if paths["paper1_baseline"].exists():
+            baseline_payload = json.loads(paths["paper1_baseline"].read_text(encoding="utf-8"))
+            ada_cv = baseline_payload["adaboost_cv_10fold"]
+            ref_metrics = {
+                "R2_mean": float(ada_cv["R2_mean"]),
+                "RMSE_mean": float(ada_cv["RMSE_mean"]),
+                "MAE_mean": float(ada_cv["MAE_mean"]),
+                "MAPE_mean": float(ada_cv["MAPE_mean"]),
+            }
+            delta = compare_to_ref(best_metrics, ref_metrics)
+            compare_to_paper1 = {
+                "paper1_adaboost_cv_10fold": ref_metrics,
+                "delta": delta,
+                "is_better": bool(delta["R2_gain"] > 0 and delta["RMSE_drop"] > 0),
+            }
 
-        # 11) 保存完整指标，便于报告撰写与跨版本横向对比。
-        metrics_payload = {
+        # 11) 保存完整指标，便于报告撰写与对比。
+        metrics_payload: dict[str, Any] = {
             "version": "v9",
-            "strategy": "Age-aware piecewise weighted blending with v7 anchor",
+            "method_name_zh": METHOD_NAME_ZH,
+            "method_name_en": METHOD_NAME_EN,
             "cv_protocol": {
                 "type": "KFold",
                 "n_splits": 10,
@@ -336,27 +355,23 @@ def main() -> None:
                 "strategy_variant": best_strategy,
                 "cv_10fold": best_metrics,
             },
-            "compare_to_v8": {
-                "v8": v8_best,
-                "delta": delta_v8,
-                "is_better": bool(delta_v8["R2_gain"] > 0 and delta_v8["RMSE_drop"] > 0),
-            },
-            "compare_to_v7": {
-                "v7": v7_base,
-                "delta": delta_v7,
-                "is_better": bool(delta_v7["R2_gain"] > 0 and delta_v7["RMSE_drop"] > 0),
-            },
             "training_time_sec": float(time.perf_counter() - total_start),
         }
+        if compare_to_paper1 is not None:
+            metrics_payload["compare_to_paper1"] = compare_to_paper1
 
         paths["metrics"].write_text(json.dumps(metrics_payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
         logger.info(
-            "v9 最终10折CV: R2=%.6f±%.6f, RMSE=%.6f±%.6f",
+            "v9 最终10折CV: R2=%.6f±%.6f, RMSE=%.6f±%.6f, MAE=%.6f±%.6f, MAPE=%.4f%%±%.4f%%",
             best_metrics["R2_mean"],
             best_metrics["R2_std"],
             best_metrics["RMSE_mean"],
             best_metrics["RMSE_std"],
+            best_metrics["MAE_mean"],
+            best_metrics["MAE_std"],
+            best_metrics["MAPE_mean"],
+            best_metrics["MAPE_std"],
         )
         logger.info("模型已保存: %s", paths["model"])
         logger.info("指标已保存: %s", paths["metrics"])
