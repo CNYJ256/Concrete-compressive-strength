@@ -236,6 +236,29 @@ $$
 
 本轮实验中，V4（raw+piecewise）在 $R^2$/RMSE 上优于 V3（engineered+piecewise），但在 MAE/MAPE 上未形成一致优势。这说明：
 
+其中，V4（raw+piecewise）的严格定义为：
+
+- 输入仅使用 raw 特征空间（8 个基础变量），不使用 `feature_engineering` 与 `feature_engineering_anchor`；
+- 候选模型为 `XGB_raw`、`LGB_raw`、`HGB_raw`、`HGB_anchor_raw`；
+- 仍执行与 V3 相同的龄期分段约束融合：
+
+$$
+\mathbf{w}^{raw}_e=\arg\min \mathrm{RMSE}(\mathbf{y}_{\mathcal{I}_e},\mathbf{P}^{raw}_{\mathcal{I}_e}\mathbf{w}),\quad
+\mathbf{w}^{raw}_l=\arg\min \mathrm{RMSE}(\mathbf{y}_{\mathcal{I}_l},\mathbf{P}^{raw}_{\mathcal{I}_l}\mathbf{w})
+$$
+
+并满足 $w_i\ge0,\sum_i w_i=1$。
+
+因此 V4 在消融中的角色是“控制变量组”：保留分段融合机制，去除特征工程，以估计特征工程的净边际贡献。
+
+从本次结果看，V4 在 $R^2$/RMSE 上优于 V3（V4: $R^2=0.95058$、RMSE$=3.63346$；V3: $R^2=0.94876$、RMSE$=3.69953$），这也是“raw piecewise 更好看”的直接来源。其成因可归纳为：
+
+1. 融合权重优化目标为 RMSE，优化过程会优先压低大误差样本，对 $R^2$/RMSE 更敏感；
+2. 在 1030 样本规模下，扩展特征并不必然在所有指标上同步增益，可能出现方差放大与指标分化；
+3. 当前对比为固定参数下的模块消融，尚未进行“特征工程-超参数”联合搜索，故存在 raw 在部分指标占优的情形。
+
+同时应注意 V3 在 MAE 上仍优于 V4（2.35210 vs 2.36879），而 V4 在 MAPE 上更优（8.32661 vs 8.48766），说明二者并非单向优劣关系，而是指标权衡关系。
+
 1. 当前“特征工程 + 固定超参数”的组合并非全局最优；
 2. 特征扩展可能引入对参数更高敏感度，需要联合调参验证；
 3. 工程上应以多指标综合决策，而非单指标结论。

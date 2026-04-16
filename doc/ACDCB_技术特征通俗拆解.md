@@ -309,6 +309,36 @@ $$
 - $\Delta MAE = -1.156382$
 - $\Delta MAPE = -4.863522$ pct
 
+## 7.4 消融中的 `raw piecewise` 是什么
+
+在本项目消融里，`raw piecewise`（对应 `v4_raw_age_piecewise_no_feature_engineering`）的定义是：
+
+1. **只用 raw 输入**：即仅使用 8 个基础变量，不做 `feature_engineering` 和 `feature_engineering_anchor`；
+2. **模型集合改为 raw 版本**：`XGB_raw`、`LGB_raw`、`HGB_raw`、`HGB_anchor_raw`；
+3. **仍保留龄期分段 + 约束融合**：
+
+$$
+\mathbf{w}^{raw}_e=\arg\min\mathrm{RMSE}(\mathbf{y}_e,\mathbf{P}^{raw}_e\mathbf{w}),\quad
+\mathbf{w}^{raw}_l=\arg\min\mathrm{RMSE}(\mathbf{y}_l,\mathbf{P}^{raw}_l\mathbf{w})
+$$
+
+且满足 $w_i\ge 0,\sum_i w_i=1$。
+
+它的作用是做“控制变量”：保留融合机制，去掉特征工程，用于估计特征工程模块的净贡献。
+
+为什么会出现“raw piecewise 看起来更好看”：
+
+- 在当前消融结果中，`v4_raw_age_piecewise_no_feature_engineering` 的 $R^2=0.95058$、RMSE$=3.63346$，确实高于/低于 `v3`（$R^2=0.94876$、RMSE$=3.69953$）；
+- 但它并非全指标绝对领先：`v3` 的 MAE 更低（2.35210 vs 2.36879），而 `v4` 的 MAPE 更低（8.32661 vs 8.48766），属于多指标“交叉领先”。
+
+从方法角度，常见原因有三类：
+
+1. **损失函数偏好**：融合权重优化目标是 RMSE，模型会优先压低大误差样本；这可提升 $R^2$/RMSE，但不保证 MAE 同步最优；
+2. **样本规模与特征维度匹配**：在 1030 样本规模下，部分扩展特征可能提升表达能力，也可能引入方差，导致不同指标表现分化；
+3. **参数-特征耦合未完全展开**：当前属于固定参数下的消融对比，若不做“特征工程与超参数联合搜索”，出现 raw 在部分指标占优是正常现象。
+
+因此更准确的结论不是“raw 比 ACDCB 更好”，而是：**当前参数设定下，raw 与 engineered 各有优势，需通过联合调参确定最终最优配置。**
+
 ---
 
 ## 8. 你特别关心的几个问题，直接回答
