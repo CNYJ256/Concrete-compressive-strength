@@ -33,7 +33,7 @@ from sklearn.model_selection import KFold, cross_validate, train_test_split
 
 # 让脚本在任意 cwd 下都能正确导入项目公共模块（scripts/）。
 SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parents[3]
+PROJECT_ROOT = SCRIPT_DIR.parents[2]
 COMMON_SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 if str(COMMON_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(COMMON_SCRIPTS_DIR))

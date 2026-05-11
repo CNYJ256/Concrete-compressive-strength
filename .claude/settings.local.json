@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python src/concrete_compressive_strength/reproduction/paper1_reproduce.py)",
+      "Bash(python scripts/presentation/generate_sci_figures.py)",
+      "Bash(python -c ' *)"
+    ]
+  }
+}

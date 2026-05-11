@@ -68,16 +68,16 @@ TARGET_COLUMN = "strength"
 # 基线模型参数（参考论文）
 # =========================
 ADABOOST_PARAMS = {
-    "n_estimators": 200,
-    "learning_rate": 0.2,
-    "loss": "linear",
+    "n_estimators": 250,
+    "learning_rate": 0.05,
+    "loss": "square",
     "random_state": RANDOM_STATE,
 }
 
 TREE_PARAMS = {
-    "max_depth": 50,
+    "max_depth": 15,
     "min_samples_split": 5,
-    "min_samples_leaf": 2,
+    "min_samples_leaf": 1,
     "min_impurity_decrease": 1e-4,
     "random_state": RANDOM_STATE,
 }
