@@ -1,0 +1,34 @@
+# LaTeX compilation intermediate files
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.bbl
+*.blg
+*.brf
+*.synctex.gz
+*.synctex.gz(busy)
+*.fls
+*.fdb_latexmk
+*.dvi
+*.ps
+*.nav
+*.snm
+*.vrb
+*.run.xml
+*.blx.bib
+*.bcf
+
+# Compiled PDF output
+*.pdf
+
+# Backup files
+*~
+*.backup
+testflow
+# OS files
+Thumbs.db
+.DS_Store
+bibtex
