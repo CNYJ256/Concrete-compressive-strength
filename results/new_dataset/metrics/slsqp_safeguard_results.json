@@ -1,0 +1,159 @@
+{
+  "meta": {
+    "study": "SLSQP Safeguard Mechanism Verification (Phase 3.1)",
+    "dataset": "UCI Concrete (N=1,030)",
+    "cv_folds": 10,
+    "random_state": 42
+  },
+  "pools": {
+    "Strong": {
+      "n_models": 4,
+      "OLS": {
+        "R2": 0.9432057174173234,
+        "RMSE": 3.9792893605562587,
+        "weights": {
+          "XGB": 0.4002273115152299,
+          "LGB": 0.09163244990315522,
+          "HGB": 0.2545709102261226,
+          "HGB_2": 0.2545709102261224
+        },
+        "negative_weights": 0
+      },
+      "SLSQP": {
+        "R2": 0.9432001735110439,
+        "RMSE": 3.97948357261368,
+        "weights": {
+          "XGB": 0.39970902475064096,
+          "LGB": 0.09007052276864691,
+          "HGB": 0.2551102273742678,
+          "HGB_2": 0.2551102251064444
+        },
+        "negative_weights": 0,
+        "success": true
+      },
+      "SLSQP_vs_OLS": {
+        "R2_gain": -5.543906279492639e-06,
+        "RMSE_drop": -0.00019421205742142789
+      }
+    },
+    "Underfit": {
+      "n_models": 4,
+      "OLS": {
+        "R2": 0.9016617969178577,
+        "RMSE": 5.236177327405548,
+        "weights": {
+          "XGB_under": -0.0525021171402657,
+          "LGB_under": -0.05174655186346877,
+          "HGB_under": 0.5530223523391768,
+          "HGB_under2": 0.5530223523391763
+        },
+        "negative_weights": 2
+      },
+      "SLSQP": {
+        "R2": 0.8992156740496496,
+        "RMSE": 5.3009011970807896,
+        "weights": {
+          "XGB_under": 9.936496070395151e-15,
+          "LGB_under": 4.6074255521944e-15,
+          "HGB_under": 0.4999999701976706,
+          "HGB_under2": 0.5000000298023148
+        },
+        "negative_weights": 0,
+        "success": true
+      },
+      "SLSQP_vs_OLS": {
+        "R2_gain": -0.0024461228682081115,
+        "RMSE_drop": -0.06472386967524191
+      }
+    },
+    "Overfit": {
+      "n_models": 3,
+      "OLS": {
+        "R2": 0.9028187407239514,
+        "RMSE": 5.205284519571601,
+        "weights": {
+          "XGB_over": 0.07236169113648311,
+          "LGB_over": 0.48205457401105944,
+          "HGB_over": 0.4400191357429648
+        },
+        "negative_weights": 0
+      },
+      "SLSQP": {
+        "R2": 0.9026479751647346,
+        "RMSE": 5.209855839123478,
+        "weights": {
+          "XGB_over": 0.0682576646543363,
+          "LGB_over": 0.49120537297019845,
+          "HGB_over": 0.44053696237546525
+        },
+        "negative_weights": 0,
+        "success": true
+      },
+      "SLSQP_vs_OLS": {
+        "R2_gain": -0.00017076555921680114,
+        "RMSE_drop": -0.004571319551877728
+      }
+    },
+    "Noisy": {
+      "n_models": 4,
+      "OLS": {
+        "R2": 0.9235180014835487,
+        "RMSE": 4.617775610647401,
+        "weights": {
+          "XGB_noisy": 0.25409639963259395,
+          "LGB_noisy": 0.24503592884660907,
+          "HGB_noisy": 0.2619563689384013,
+          "HGB_2_noisy": 0.23440384672028466
+        },
+        "negative_weights": 0
+      },
+      "SLSQP": {
+        "R2": 0.9234047891957341,
+        "RMSE": 4.621192072235949,
+        "weights": {
+          "XGB_noisy": 0.2548474387564566,
+          "LGB_noisy": 0.24577086448241736,
+          "HGB_noisy": 0.2636209434018263,
+          "HGB_2_noisy": 0.2357607533592998
+        },
+        "negative_weights": 0,
+        "success": true
+      },
+      "SLSQP_vs_OLS": {
+        "R2_gain": -0.00011321228781457915,
+        "RMSE_drop": -0.0034164615885483585
+      }
+    },
+    "Mixed": {
+      "n_models": 4,
+      "OLS": {
+        "R2": 0.9431343264114604,
+        "RMSE": 3.98178957922811,
+        "weights": {
+          "XGB_normal": 0.5219723563331009,
+          "LGB_normal": 0.6187636943182921,
+          "HGB_under": -0.07074623473684505,
+          "HGB_under2": -0.07074623473684549
+        },
+        "negative_weights": 2
+      },
+      "SLSQP": {
+        "R2": 0.9424721991036804,
+        "RMSE": 4.00490388780352,
+        "weights": {
+          "XGB_normal": 0.46553147089055047,
+          "LGB_normal": 0.5344685291094496,
+          "HGB_under": 1.9650316916938263e-17,
+          "HGB_under2": 0.0
+        },
+        "negative_weights": 0,
+        "success": true
+      },
+      "SLSQP_vs_OLS": {
+        "R2_gain": -0.000662127307780036,
+        "RMSE_drop": -0.023114308575410192
+      }
+    }
+  },
+  "runtime_sec": 219.14760959986597
+}
