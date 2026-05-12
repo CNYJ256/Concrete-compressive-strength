@@ -21,6 +21,9 @@ import matplotlib
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
+
+plt.rcParams['font.family'] = 'Times New Roman'
+plt.rcParams['mathtext.fontset'] = 'stix'
 import numpy as np
 import pandas as pd
 import shap
@@ -176,7 +179,16 @@ def main() -> None:
         color_bar=True,
     )
     fig = plt.gcf()
-    fig.axes[0].set_title("SHAP Summary: Tuned Raw XGBoost", fontweight="bold", fontsize=9)
+    fig.axes[0].set_title("SHAP Summary: Tuned Raw XGBoost", fontweight="bold", fontsize=7)
+    fig.axes[0].tick_params(labelsize=5.5)
+    fig.axes[0].xaxis.label.set_size(5.5)
+    fig.axes[0].yaxis.label.set_size(5.5)
+    if fig.axes[0].get_legend() is not None:
+        fig.axes[0].get_legend().remove()
+    cbar_ax = fig.axes[1] if len(fig.axes) > 1 else None
+    if cbar_ax is not None:
+        cbar_ax.tick_params(labelsize=5)
+        cbar_ax.set_ylabel("SHAP value\n(impact on model output)", fontsize=5.5)
     fig.tight_layout(pad=0.3)
     fig.savefig(FIG_DIR / "fig_shap_summary.pdf", **SAVE_KWARGS)
     fig.savefig(FIG_DIR / "fig_shap_summary.png", **SAVE_KWARGS)

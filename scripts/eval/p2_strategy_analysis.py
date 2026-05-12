@@ -55,7 +55,8 @@ FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Use academic-friendly styling
 plt.rcParams.update({
-    "font.family": "serif",
+    "font.family": "Times New Roman",
+    "mathtext.fontset": "stix",
     "font.size": 9,
     "axes.titlesize": 10,
     "axes.labelsize": 9,
@@ -103,16 +104,17 @@ def analyze_feature_collinearity(df: pd.DataFrame, X_primary: pd.DataFrame, y: n
         print(f"    r={p['pearson_r']:+.4f}: {p['feature_1']} ↔ {p['feature_2']}")
 
     # ---- 1b: Visualization ----
-    fig, ax = plt.subplots(figsize=(7.5, 6))
+    fig, ax = plt.subplots(figsize=(14, 11))
     im = ax.imshow(corr.values, cmap="RdBu_r", vmin=-1, vmax=1, aspect="auto")
     ax.set_xticks(range(len(feat_cols)))
     ax.set_yticks(range(len(feat_cols)))
-    ax.set_xticklabels([f.replace("_", " ")[:12] for f in feat_cols], rotation=90, fontsize=5)
-    ax.set_yticklabels([f.replace("_", " ")[:12] for f in feat_cols], fontsize=5)
-    ax.set_title("Engineered Feature Correlation Matrix ($\\mathbb{R}^{24}$)")
-    plt.colorbar(im, ax=ax, shrink=0.78)
+    ax.set_xticklabels([f.replace("_", " ")[:16] for f in feat_cols], rotation=90, fontsize=20)
+    ax.set_yticklabels([f.replace("_", " ")[:16] for f in feat_cols], fontsize=20)
+    ax.set_title("Engineered Feature Correlation Matrix ($\\mathbb{R}^{24}$)", fontsize=18, fontweight='bold')
+    cbar = plt.colorbar(im, ax=ax, shrink=0.78)
+    cbar.ax.tick_params(labelsize=28)
     fig.tight_layout()
-    fig.savefig(FIG_DIR / "fig_p2_feature_collinearity.pdf", dpi=200, bbox_inches="tight")
+    fig.savefig(FIG_DIR / "fig_p2_feature_collinearity.pdf", dpi=300, bbox_inches="tight")
     plt.close(fig)
     print("  → 已保存: figures/presentation_highres/fig_p2_feature_collinearity.pdf")
 
@@ -250,33 +252,33 @@ def analyze_model_redundancy(oof_df: pd.DataFrame, y: np.ndarray) -> dict:
     print(f"    ΔR²(Equal vs Best):       {eq_metrics['R2']-single_metrics[best_name]['R2']:+.6f}")
 
     # ---- 2c: Prediction scatter matrix ----
-    fig, axes = plt.subplots(n, n, figsize=(8, 8))
+    fig, axes = plt.subplots(n, n, figsize=(14, 14))
     for i in range(n):
         for j in range(n):
             ax = axes[i, j]
             if i == j:
                 ax.text(0.5, 0.5, model_labels[i], ha="center", va="center",
-                        fontsize=8, fontweight="bold", transform=ax.transAxes)
+                        fontsize=16, fontweight="bold", transform=ax.transAxes)
                 ax.set_xticks([]); ax.set_yticks([])
             else:
                 ax.scatter(oof_df[model_cols[j]], oof_df[model_cols[i]],
-                          s=1, alpha=0.3, color="#2166ac")
+                          s=3, alpha=0.35, color="#2166ac")
                 r_val = corr_matrix[i, j]
                 ax.text(0.05, 0.95, f"r={r_val:.4f}", transform=ax.transAxes,
-                        fontsize=6, va="top", ha="left",
+                        fontsize=12, va="top", ha="left",
                         bbox=dict(boxstyle="round,pad=0.15", fc="white", alpha=0.7))
             if i == n - 1:
-                ax.set_xlabel(model_labels[j][:8], fontsize=7)
+                ax.set_xlabel(model_labels[j][:8], fontsize=14)
             else:
                 ax.set_xticklabels([])
             if j == 0:
-                ax.set_ylabel(model_labels[i][:8], fontsize=7)
+                ax.set_ylabel(model_labels[i][:8], fontsize=14)
             else:
                 ax.set_yticklabels([])
-            ax.tick_params(labelsize=5)
-    fig.suptitle("OOF Prediction Cross-Correlation Matrix", fontsize=10, y=0.99)
+            ax.tick_params(labelsize=10)
+    fig.suptitle("OOF Prediction Cross-Correlation Matrix", fontsize=20, y=0.99)
     fig.tight_layout()
-    fig.savefig(FIG_DIR / "fig_p2_model_corr_matrix.pdf", dpi=200, bbox_inches="tight")
+    fig.savefig(FIG_DIR / "fig_p2_model_corr_matrix.pdf", dpi=300, bbox_inches="tight")
     plt.close(fig)
     print("  → 已保存: figures/presentation_highres/fig_p2_model_corr_matrix.pdf")
 
@@ -358,7 +360,7 @@ def analyze_age_segmentation() -> dict:
 
     fig.suptitle("Age-Conditioned Piecewise Blending: Threshold Insensitivity", fontsize=10)
     fig.tight_layout()
-    fig.savefig(FIG_DIR / "fig_p2_threshold_flatness.pdf", dpi=200, bbox_inches="tight")
+    fig.savefig(FIG_DIR / "fig_p2_threshold_flatness.pdf", dpi=300, bbox_inches="tight")
     plt.close(fig)
     print("  → 已保存: figures/presentation_highres/fig_p2_threshold_flatness.pdf")
 

@@ -401,33 +401,32 @@ def fig_conformal():
     w = 0.3
 
     # --- PICP ---
-    ax1.bar(x - w/2, xgb_picp, w, color=C['xgb'], edgecolor='white', linewidth=0.5, label='XGB Single')
-    ax1.bar(x + w/2, ens_picp, w, color=C['ensemble'], edgecolor='white', linewidth=0.5, label='ACDCB Ensemble')
+    ax1.bar(x - w/2, xgb_picp, w, color=C['xgb'], edgecolor='white', linewidth=0.5, label='XGB Single', zorder=3)
+    ax1.bar(x + w/2, ens_picp, w, color=C['ensemble'], edgecolor='white', linewidth=0.5, label='ACDCB Ensemble', zorder=3)
     ax1.set_xticks(x)
     ax1.set_xticklabels(levels, fontsize=9)
     ax1.set_ylabel('PICP', fontsize=9)
     ax1.set_title('(a) Prediction Interval Coverage', fontsize=10, fontweight='bold')
     ax1.set_ylim(0.85, 0.97)
-    ax1.legend(fontsize=7, frameon=False)
+    ax1.legend(fontsize=7, frameon=False).set_zorder(10)
     ax1.grid(axis='y', alpha=0.3, linewidth=0.5)
-    # Annotate
     for i in range(2):
-        ax1.text(i, xgb_picp[i] + 0.003, f'{xgb_picp[i]:.4f}', ha='center', fontsize=7)
-        ax1.text(i, ens_picp[i] + 0.003, f'{ens_picp[i]:.4f}', ha='center', fontsize=7)
+        ax1.text(i - w/2, xgb_picp[i] + 0.003, f'{xgb_picp[i]:.4f}', ha='center', fontsize=7, zorder=10)
+        ax1.text(i + w/2, ens_picp[i] + 0.003, f'{ens_picp[i]:.4f}', ha='center', fontsize=7, zorder=10)
     ax1.axhline(y=float(levels[0][:-1])/100, color='gray', linestyle='--', linewidth=0.6, alpha=0.5)
 
     # --- MPIW ---
-    ax2.bar(x - w/2, xgb_mpiw, w, color=C['xgb'], edgecolor='white', linewidth=0.5, label='XGB Single')
-    ax2.bar(x + w/2, ens_mpiw, w, color=C['ensemble'], edgecolor='white', linewidth=0.5, label='ACDCB Ensemble')
+    ax2.bar(x - w/2, xgb_mpiw, w, color=C['xgb'], edgecolor='white', linewidth=0.5, label='XGB Single', zorder=3)
+    ax2.bar(x + w/2, ens_mpiw, w, color=C['ensemble'], edgecolor='white', linewidth=0.5, label='ACDCB Ensemble', zorder=3)
     ax2.set_xticks(x)
     ax2.set_xticklabels(levels, fontsize=9)
     ax2.set_ylabel('MPIW (MPa)', fontsize=9)
     ax2.set_title('(b) Mean Prediction Interval Width', fontsize=10, fontweight='bold')
-    ax2.legend(fontsize=7, frameon=False)
+    ax2.legend(fontsize=7, frameon=False).set_zorder(10)
     ax2.grid(axis='y', alpha=0.3, linewidth=0.5)
     for i in range(2):
-        ax2.text(i, xgb_mpiw[i] + 0.02, f'{xgb_mpiw[i]:.2f}', ha='center', fontsize=7)
-        ax2.text(i, ens_mpiw[i] + 0.02, f'{ens_mpiw[i]:.2f}', ha='center', fontsize=7)
+        ax2.text(i - w/2, xgb_mpiw[i] + 0.02, f'{xgb_mpiw[i]:.2f}', ha='center', fontsize=7, zorder=10)
+        ax2.text(i + w/2, ens_mpiw[i] + 0.02, f'{ens_mpiw[i]:.2f}', ha='center', fontsize=7, zorder=10)
 
     # key insight
     fig.text(0.5, 0.01, 'Ensemble intervals are WIDER — no UQ benefit from model diversity',
@@ -448,40 +447,45 @@ def fig_bootstrap_ci():
     bt_uci = data['p02_bootstrap_uci']
     bt_nd = data.get('p02_bootstrap_new', {})
 
-    # Use values from the JSON — only UCI bootstrap data is present
     uci_r2 = bt_uci['v4_raw_piecewise_r2']
     uci_lo, uci_hi = bt_uci['v4_ci_95']
-    # New data bootstrap from p02_astm_bootstrap (we'll use the ablation result R² with CI)
     nd_r2 = 0.9952
     nd_lo, nd_hi = 0.9948, 0.9955
 
-    fig, ax = plt.subplots(figsize=(SINGLE_W, 2.5))
+    fig, ax = plt.subplots(figsize=(SINGLE_W * 0.72, 2.4))
 
-    datasets = ['UCI\n($N$=1,030)', 'New Data\n($N$=4,420)']
     r2_vals = [uci_r2, nd_r2]
-    errs = [[uci_r2 - uci_lo, nd_r2 - nd_lo], [uci_hi - uci_r2, nd_hi - nd_r2]]
-
+    markers = ['o', 's']
     colors_list = [C['uci'], C['new']]
-    for i, (label, r2, err, color) in enumerate(zip(datasets, r2_vals,
-        [[uci_r2-uci_lo, uci_hi-uci_r2], [nd_r2-nd_lo, nd_hi-nd_r2]], colors_list)):
-        ax.errorbar(i, r2, yerr=[[err[0]], [err[1]]], fmt='o', color=color,
-                    capsize=6, capthick=1.5, markersize=10, markeredgecolor='white',
-                    markeredgewidth=0.5, elinewidth=1.5, zorder=5)
-        ax.annotate(f'{r2:.4f}\n[{r2-err[0]:.4f}, {r2+err[1]:.4f}]',
-                   (i, r2), textcoords="offset points", xytext=(0, 14),
-                   fontsize=7.5, ha='center', fontweight='bold')
+    labels = ['UCI', 'New Data']
 
-    # CI width annotation
-    ax.annotate(f'CI width\n= {uci_hi-uci_lo:.4f}', (0, uci_lo - 0.002),
-               fontsize=7, ha='center', color='gray')
-    ax.annotate(f'CI width\n= {nd_hi-nd_lo:.4f} (31× narrower)', (1, nd_lo - 0.002),
-               fontsize=7, ha='center', color='gray')
+    for i, (label, r2, err, color, marker) in enumerate(zip(
+        labels, r2_vals,
+        [[uci_r2 - uci_lo, uci_hi - uci_r2], [nd_r2 - nd_lo, nd_hi - nd_r2]],
+        colors_list, markers)):
+        ax.errorbar(i, r2, yerr=[[err[0]], [err[1]]], fmt=marker, color=color,
+                    capsize=6, capthick=1.5, markersize=12, markeredgecolor='white',
+                    markeredgewidth=1.0, elinewidth=1.5, zorder=5)
+
+        x_offset = 35 if i == 0 else -35
+        y_offset = 0 if i == 0 else -12
+        ha_align = 'left' if i == 0 else 'right'
+        ci_text = f'$R^2$={r2:.4f}\n[{r2 - err[0]:.4f}, {r2 + err[1]:.4f}]'
+        ax.annotate(ci_text, (i, r2), textcoords="offset points",
+                   xytext=(x_offset, y_offset), fontsize=4, ha=ha_align, va='center',
+                   fontweight='bold', color='black')
+
+    ax.annotate(f'CI width = {uci_hi - uci_lo:.4f}', (0, uci_lo - 0.002),
+               fontsize=4, ha='center', color='black', fontweight='bold')
+    ax.annotate(f'CI width = {nd_hi - nd_lo:.4f} (31x narrower)', (1, nd_lo - 0.004),
+               fontsize=4, ha='center', color='black', fontweight='bold')
 
     ax.set_xticks(range(2))
-    ax.set_xticklabels(datasets, fontsize=9)
-    ax.set_ylabel('$R^2$', fontsize=9)
-    ax.set_title('Bootstrap 95% CI ($B$=10,000)\nRaw+Piecewise (V4)', fontsize=10, fontweight='bold')
+    ax.set_xticklabels([f'UCI\n($N$=1,030)', f'New Data\n($N$=4,420)'], fontsize=5)
+    ax.set_ylabel('$R^2$', fontsize=5)
+    ax.set_title('Raw+Piecewise (V4)', fontsize=6, fontweight='bold')
     ax.grid(axis='y', alpha=0.3, linewidth=0.5)
+    ax.set_xlim(-0.4, 1.4)
 
     fig.tight_layout()
     for fmt in ['pdf', 'png']:

@@ -284,8 +284,8 @@ def fig_scatter_adaboost():
     ax.set_title("AdaBoost Baseline (10-fold OOF)", fontsize=9, fontweight="bold")
     ax.grid(alpha=0.2)
     ax.legend(loc="lower right", fontsize=7)
-    ax.text(0.03, 0.93, f"R$^2$ = {r2_val:.3f}\nRMSE = {rmse_val:.2f} MPa",
-            transform=ax.transAxes, fontsize=8,
+    ax.text(0.03, 0.97, f"R$^2$ = {r2_val:.3f}\nRMSE = {rmse_val:.2f} MPa",
+            transform=ax.transAxes, fontsize=8, va="top",
             bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="#cccccc", alpha=0.85))
 
     fig.tight_layout(pad=0.3)
@@ -321,8 +321,8 @@ def fig_scatter_acdcb():
     ax.set_title("ACDCB (10-fold OOF)", fontsize=9, fontweight="bold")
     ax.grid(alpha=0.2)
     ax.legend(loc="lower right", fontsize=7)
-    ax.text(0.03, 0.93, f"R$^2$ = {r2_val:.3f}\nRMSE = {rmse_val:.2f} MPa",
-            transform=ax.transAxes, fontsize=8,
+    ax.text(0.03, 0.97, f"R$^2$ = {r2_val:.3f}\nRMSE = {rmse_val:.2f} MPa",
+            transform=ax.transAxes, fontsize=8, va="top",
             bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="#cccccc", alpha=0.85))
 
     fig.tight_layout(pad=0.3)
@@ -356,18 +356,13 @@ def fig_ablation_r2_rmse():
     b1 = ax1.bar(x - width/2, r2, width, color="#4C78A8", alpha=0.88, label=r"$R^2$", zorder=3)
     b2 = ax2.bar(x + width/2, rmse, width, color="#E45756", alpha=0.82, label="RMSE (MPa)", zorder=3)
 
-    for b in b1:
-        ax1.text(b.get_x() + b.get_width()/2, b.get_height() + 0.0005,
-                 f"{b.get_height():.4f}", ha="center", va="bottom", fontsize=5.5)
-    for b in b2:
-        ax2.text(b.get_x() + b.get_width()/2, b.get_height() + 0.01,
-                 f"{b.get_height():.3f}", ha="center", va="bottom", fontsize=5.5)
-
     # Highlight V3
     b1[3].set_edgecolor("#333333")
     b1[3].set_linewidth(1.5)
+    b1[3].set_zorder(5)
     b2[3].set_edgecolor("#333333")
     b2[3].set_linewidth(1.5)
+    b2[3].set_zorder(5)
 
     ax1.set_xticks(x)
     ax1.set_xticklabels(variants, fontsize=7)
@@ -375,8 +370,13 @@ def fig_ablation_r2_rmse():
     ax2.set_ylabel("RMSE (MPa)", color="#E45756", fontsize=9)
     ax1.set_title("Ablation: R$^2$ and RMSE (10-fold)", fontsize=9, fontweight="bold")
     ax1.grid(axis="y", alpha=0.18, zorder=0)
-    ax1.legend(loc="lower right", fontsize=7)
-    ax2.legend(loc="lower left", fontsize=7)
+    # Merged legend from both axes — force ax1 above ax2 so legend renders on top
+    handles1, labels1 = ax1.get_legend_handles_labels()
+    handles2, labels2 = ax2.get_legend_handles_labels()
+    legend = ax1.legend(handles1 + handles2, labels1 + labels2, loc="lower right", fontsize=7)
+    legend.set_zorder(20)
+    ax1.set_zorder(ax2.get_zorder() + 1)
+    ax1.patch.set_visible(False)
 
     fig.tight_layout(pad=0.3)
     fig.savefig(OUT_DIR / "fig_ablation_r2_rmse.pdf", **SAVE_KWARGS)
@@ -474,7 +474,9 @@ def fig_feature_importance():
     ax.grid(axis="x", alpha=0.18)
     for bar, val in zip(bars, imp_sorted):
         if val >= 0.05:
-            ax.text(val + 0.001, bar.get_y() + 0.35, f"{val:.3f}", fontsize=6)
+            ax.text(val + 0.003, bar.get_y() + 0.35, f"{val:.3f}", fontsize=6)
+
+    ax.set_xlim(0, max(imp_sorted) * 1.12)
 
     ax.text(0.95, 0.04,
             f"Red border: Top-{top_n}",
@@ -533,29 +535,28 @@ def fig_single_r2_rmse():
     models = ["XGBoost", "LightGBM", "HGB", "HGB\nAnchor"]
     r2 = [0.945934, 0.945652, 0.945497, 0.947965]
     rmse = [3.7817, 3.8052, 3.8090, 3.7408]
-    x = np.arange(len(models))
-    width = 0.38
+    y = np.arange(len(models))
+    height = 0.35
 
-    fig, ax1 = plt.subplots(figsize=(IEEE_WIDTH, 2.5))
-    ax2 = ax1.twinx()
-    b1 = ax1.bar(x - width/2, r2, width, color="#4C78A8", alpha=0.85, label=r"$R^2$")
-    b2 = ax2.bar(x + width/2, rmse, width, color="#E45756", alpha=0.82, label="RMSE (MPa)")
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(IEEE_WIDTH, 2.5))
 
-    for b in b1:
-        ax1.text(b.get_x() + b.get_width()/2, b.get_height() + 0.0002,
-                 f"{b.get_height():.4f}", ha="center", fontsize=5.5)
-    for b in b2:
-        ax2.text(b.get_x() + b.get_width()/2, b.get_height() + 0.005,
-                 f"{b.get_height():.4f}", ha="center", fontsize=5.5)
+    b1 = ax1.barh(y, r2, height, color="#4C78A8", alpha=0.85, label=r"$R^2$", zorder=3)
+    ax1.set_yticks(y)
+    ax1.set_yticklabels(models, fontsize=6)
+    ax1.set_xlabel(r"$R^2$", fontsize=7)
+    ax1.set_title("$R^2$", fontsize=7, fontweight="bold")
+    ax1.tick_params(axis='x', labelsize=6)
+    ax1.grid(axis="x", alpha=0.18)
+    ax1.legend(loc="lower right", fontsize=5.5).set_zorder(10)
 
-    ax1.set_xticks(x)
-    ax1.set_xticklabels(models, fontsize=8)
-    ax1.set_ylabel(r"$R^2$", color="#4C78A8", fontsize=9)
-    ax2.set_ylabel("RMSE (MPa)", color="#E45756", fontsize=9)
-    ax1.set_title("Single Model OOF Performance", fontsize=9, fontweight="bold")
-    ax1.grid(axis="y", alpha=0.18)
-    ax1.legend(loc="lower left", fontsize=7)
-    ax2.legend(loc="lower right", fontsize=7)
+    b2 = ax2.barh(y, rmse, height, color="#E45756", alpha=0.82, label="RMSE (MPa)", zorder=3)
+    ax2.set_yticks(y)
+    ax2.set_yticklabels(models, fontsize=6)
+    ax2.set_xlabel("RMSE (MPa)", fontsize=7)
+    ax2.set_title("RMSE", fontsize=7, fontweight="bold")
+    ax2.tick_params(axis='x', labelsize=6)
+    ax2.grid(axis="x", alpha=0.18)
+    ax2.legend(loc="lower right", fontsize=5.5).set_zorder(10)
 
     fig.tight_layout(pad=0.3)
     fig.savefig(OUT_DIR / "fig_single_r2_rmse.pdf", **SAVE_KWARGS)
@@ -571,29 +572,28 @@ def fig_single_mae_mape():
     models = ["XGBoost", "LightGBM", "HGB", "HGB\nAnchor"]
     mae = [2.4618, 2.4799, 2.4259, 2.3683]
     mape = [8.9295, 8.8780, 8.7165, 8.5289]
-    x = np.arange(len(models))
-    width = 0.38
+    y = np.arange(len(models))
+    height = 0.35
 
-    fig, ax1 = plt.subplots(figsize=(IEEE_WIDTH, 2.5))
-    ax2 = ax1.twinx()
-    b1 = ax1.bar(x - width/2, mae, width, color="#F58518", alpha=0.85, label="MAE (MPa)")
-    b2 = ax2.bar(x + width/2, mape, width, color="#54A24B", alpha=0.82, label="MAPE (%)")
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(IEEE_WIDTH, 2.5))
 
-    for b in b1:
-        ax1.text(b.get_x() + b.get_width()/2, b.get_height() + 0.003,
-                 f"{b.get_height():.4f}", ha="center", fontsize=5.5)
-    for b in b2:
-        ax2.text(b.get_x() + b.get_width()/2, b.get_height() + 0.03,
-                 f"{b.get_height():.2f}%", ha="center", fontsize=5.5)
+    b1 = ax1.barh(y, mae, height, color="#F58518", alpha=0.85, label="MAE (MPa)", zorder=3)
+    ax1.set_yticks(y)
+    ax1.set_yticklabels(models, fontsize=6)
+    ax1.set_xlabel("MAE (MPa)", fontsize=7)
+    ax1.set_title("MAE", fontsize=7, fontweight="bold")
+    ax1.tick_params(axis='x', labelsize=6)
+    ax1.grid(axis="x", alpha=0.18, zorder=0)
+    ax1.legend(loc="lower right", fontsize=5.5).set_zorder(10)
 
-    ax1.set_xticks(x)
-    ax1.set_xticklabels(models, fontsize=8)
-    ax1.set_ylabel("MAE (MPa)", color="#F58518", fontsize=9)
-    ax2.set_ylabel("MAPE (%)", color="#54A24B", fontsize=9)
-    ax1.set_title("Single Model Error Metrics", fontsize=9, fontweight="bold")
-    ax1.grid(axis="y", alpha=0.18)
-    ax1.legend(loc="lower left", fontsize=7)
-    ax2.legend(loc="lower right", fontsize=7)
+    b2 = ax2.barh(y, mape, height, color="#54A24B", alpha=0.82, label="MAPE (%)", zorder=3)
+    ax2.set_yticks(y)
+    ax2.set_yticklabels(models, fontsize=6)
+    ax2.set_xlabel("MAPE (%)", fontsize=7)
+    ax2.set_title("MAPE", fontsize=7, fontweight="bold")
+    ax2.tick_params(axis='x', labelsize=6)
+    ax2.grid(axis="x", alpha=0.18, zorder=0)
+    ax2.legend(loc="lower right", fontsize=5.5).set_zorder(10)
 
     fig.tight_layout(pad=0.3)
     fig.savefig(OUT_DIR / "fig_single_mae_mape.pdf", **SAVE_KWARGS)

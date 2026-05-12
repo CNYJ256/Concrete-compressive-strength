@@ -29,6 +29,9 @@ import matplotlib
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
+
+plt.rcParams['font.family'] = 'Times New Roman'
+plt.rcParams['mathtext.fontset'] = 'stix'
 import numpy as np
 import pandas as pd
 from scipy.optimize import OptimizeWarning
@@ -359,15 +362,8 @@ def plot_comparison(results: list[dict[str, Any]]) -> None:
 
     fig, ax1 = plt.subplots(figsize=(3.5, 3.0))
     ax2 = ax1.twinx()
-    b1 = ax1.bar(x - width / 2, r2, width, color="#4C78A8", alpha=0.88, label=r"$R^2$")
-    b2 = ax2.bar(x + width / 2, rmse_vals, width, color="#E45756", alpha=0.82, label="RMSE")
-
-    for bar in b1:
-        ax1.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.00025, f"{bar.get_height():.4f}",
-                 ha="center", va="bottom", fontsize=5.2, rotation=90)
-    for bar in b2:
-        ax2.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.006, f"{bar.get_height():.3f}",
-                 ha="center", va="bottom", fontsize=5.2, rotation=90)
+    b1 = ax1.bar(x - width / 2, r2, width, color="#4C78A8", alpha=0.88, label=r"$R^2$", zorder=3)
+    b2 = ax2.bar(x + width / 2, rmse_vals, width, color="#E45756", alpha=0.82, label="RMSE", zorder=3)
 
     ax1.set_xticks(x)
     ax1.set_xticklabels(labels, fontsize=6.2)
@@ -375,8 +371,12 @@ def plot_comparison(results: list[dict[str, Any]]) -> None:
     ax2.set_ylabel("RMSE (MPa)", color="#E45756")
     ax1.set_title("Feature Selection Validation", fontweight="bold", fontsize=9)
     ax1.grid(axis="y", alpha=0.18)
-    ax1.legend(loc="lower left", fontsize=6.5)
-    ax2.legend(loc="lower right", fontsize=6.5)
+    handles1, labels1 = ax1.get_legend_handles_labels()
+    handles2, labels2 = ax2.get_legend_handles_labels()
+    legend = ax1.legend(handles1 + handles2, labels1 + labels2, loc="lower right", fontsize=6.5)
+    legend.set_zorder(20)
+    ax1.set_zorder(ax2.get_zorder() + 1)
+    ax1.patch.set_visible(False)
     fig.tight_layout(pad=0.3)
     fig.savefig(FIG_DIR / "fig_feature_selection_comparison.pdf", **SAVE_KWARGS)
     fig.savefig(FIG_DIR / "fig_feature_selection_comparison.png", **SAVE_KWARGS)

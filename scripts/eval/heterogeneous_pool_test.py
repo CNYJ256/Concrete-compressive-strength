@@ -26,6 +26,9 @@ import matplotlib
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
+
+plt.rcParams['font.family'] = 'Times New Roman'
+plt.rcParams['mathtext.fontset'] = 'stix'
 import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
@@ -252,16 +255,9 @@ def plot_pool_comparison(results: list[dict[str, Any]]) -> None:
 
     fig, ax1 = plt.subplots(figsize=(3.5, 2.85))
     ax2 = ax1.twinx()
-    b1 = ax1.bar(x - width / 2, r2, width, color="#4C78A8", alpha=0.88, label=r"Fusion $R^2$")
-    b2 = ax2.bar(x + width / 2, delta, width, color="#E45756", alpha=0.82, label=r"$\Delta R^2$ vs best")
-    ax1.plot(x, min_corr, color="#54A24B", marker="o", linewidth=1.1, markersize=3.5, label="Min pairwise r")
-
-    for bar in b1:
-        ax1.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.00025, f"{bar.get_height():.4f}",
-                 ha="center", va="bottom", fontsize=6, rotation=90)
-    for bar in b2:
-        ax2.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.00004, f"{bar.get_height():+.4f}",
-                 ha="center", va="bottom", fontsize=6, rotation=90)
+    b1 = ax1.bar(x - width / 2, r2, width, color="#4C78A8", alpha=0.88, label=r"Fusion $R^2$", zorder=3)
+    b2 = ax2.bar(x + width / 2, delta, width, color="#E45756", alpha=0.82, label=r"$\Delta R^2$ vs best", zorder=3)
+    ax1.plot(x, min_corr, color="#54A24B", marker="o", linewidth=1.1, markersize=3.5, label="Min pairwise r", zorder=5)
 
     ax1.set_xticks(x)
     ax1.set_xticklabels(labels, fontsize=8)
@@ -269,8 +265,15 @@ def plot_pool_comparison(results: list[dict[str, Any]]) -> None:
     ax2.set_ylabel(r"$\Delta R^2$ vs best single", color="#E45756")
     ax1.set_title("Heterogeneous Pool Test", fontweight="bold", fontsize=9)
     ax1.grid(axis="y", alpha=0.18)
-    ax1.legend(loc="lower left", fontsize=6.5)
-    ax2.legend(loc="lower right", fontsize=6.5)
+    # Consolidated single annotation label
+    ax1.text(0.98, 0.95,
+             "Bar: Fusion $R^2$ (left axis)\nBar: $\\Delta R^2$ vs best (right axis)\nLine: Min pairwise $r$",
+             transform=ax1.transAxes, fontsize=5.5, va="top", ha="right",
+             bbox=dict(boxstyle="round,pad=0.25", facecolor="white",
+                       edgecolor="#666666", alpha=0.92),
+             zorder=20)
+    ax1.set_zorder(ax2.get_zorder() + 1)
+    ax1.patch.set_visible(False)
     fig.tight_layout(pad=0.3)
     fig.savefig(FIG_DIR / "fig_heterogeneous_pool_comparison.pdf", **SAVE_KWARGS)
     fig.savefig(FIG_DIR / "fig_heterogeneous_pool_comparison.png", **SAVE_KWARGS)
