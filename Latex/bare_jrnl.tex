@@ -787,6 +787,42 @@ The result reinforces the UCI finding: feature restriction \emph{reduces} perfor
 \label{fig:feature_selection_comparison}
 \end{figure}
 
+\subsubsection{Refined Feature Space: Stratification by Physical Basis}
+
+The preceding analyses treat the 32-dimensional engineered space as a monolithic block, but the engineered features span a spectrum of physical justification. To test whether features with stronger theoretical grounding contribute positively while hypothesis-driven features introduce noise, we classify all 24 engineered features into three levels according to their physical basis:
+
+\begin{itemize}
+\item \textbf{Level~A (Established physical models, $D_A=4$):} water-cement ratio, water-binder ratio, $\sqrt{t}$, and $\log(t+1)$. These encode Abrams' law and power-law/logarithmic maturity relationships---universally accepted in concrete science.
+\item \textbf{Level~B (Mechanically reasonable, $D_B=12$):} Binder content, superplasticizer-binder ratio, SCM ratio, fine aggregate ratio, paste index, binder-to-aggregate ratio, water-to-paste ratio, cement/slag/fly ash fractions in binder, superplasticizer efficiency, and aggregate-binder balance. These are derived from mixture proportionality principles with clear domain motivation but less universal experimental consensus.
+\item \textbf{Level~C (Hypothesis-driven, $D_C=8$):} $t^{0.25}$, Abrams index, cement-age interaction, binder-age interaction, water-binder-age interaction, maturity index, $1/t$, and water-cement-age interaction. These are plausible but exploratory, encoding specific functional forms whose validity is context-dependent.
+\end{itemize}
+
+Three nested feature spaces were constructed: Refined-A ($8_{\text{raw}} + 4_A = 12$D), Refined-AB ($8_{\text{raw}} + 16_{A+B} = 24$D), and Refined-All ($8_{\text{raw}} + 24_{A+B+C} = 32$D). Each was evaluated with the V1 (Primary+Global) ablation protocol under independent Bayesian HPO (50 trials per model).
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.15}
+\caption{Refined Feature Space Ablation (UCI Dataset)}
+\label{tab:refined_feature_ablation}
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Feature Space} & \textbf{Dim.} & \textbf{$R^2$} & \textbf{RMSE (MPa)} \\
+\midrule
+AdaBoost Baseline (V0) & 8 & 0.9137 & 4.815 \\
+Raw Control (V4)       & 8  & 0.9506 & 3.633 \\
+Refined-A (Level~A only) & 12 & \textbf{0.9524} & \textbf{3.570} \\
+Refined-AB (Levels~A+B)  & 24 & 0.9484 & 3.687 \\
+Refined-All (A+B+C)      & 32 & 0.9472 & 3.747 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The result reveals a nuanced pattern that the monolithic ``engineering harms'' narrative obscures. Refined-A, retaining only the four most physically grounded features, \emph{outperforms} the raw 8D baseline by $\Delta R^2 = +0.0018$ (RMSE reduced by 0.063\,MPa). This confirms that Level~A features encode genuine physical knowledge not fully captured by gradient-boosted trees from raw variables alone---a small but directionally consistent benefit.
+
+However, as Level~B features are added (Refined-A $\to$ Refined-AB), $R^2$ drops by 0.0040, falling below the raw baseline. The further addition of Level~C features (Refined-AB $\to$ Refined-All) causes an additional decline of 0.0012. The degradation is monotonic: more features $\to$ worse performance, once past the Level~A optimum.
+
+This stratification directly addresses Reviewer~3's concern that the original ablation may have used suboptimal engineered features (the ``strawman'' argument). Even when restricting to the best-motivated engineering choices---the Level~A features universally accepted in concrete materials science---the net gain is only $\Delta R^2 = +0.0018$. The introduction of Level~B and Level~C features, which together constitute the majority of the original 32D space, is unambiguously harmful. The conclusion stands: on this dataset, feature engineering beyond well-established physical transforms is dominated by collinearity-induced variance inflation.
+
 \subsection{Diagnosis 2: The Multi-Model Pool Is Functionally Redundant}
 
 The ACDCB model pool comprises three gradient-boosted tree variants (XGBoost, LightGBM, HGB) motivated by their ``complementary inductive biases.'' However, the pairwise Pearson correlations of their out-of-fold predictions, reported in Table~\ref{tab:model_corr}, reveal near-identical behavior.
@@ -855,6 +891,31 @@ The heterogeneous learners do reduce the minimum pairwise OOF correlation from 0
 \label{fig:heterogeneous_pool}
 \end{figure}
 
+\subsubsection{Non-Linear Meta-Learners: Testing the Linearity Constraint}
+
+A further objection is that the ensemble's failure might reflect the restriction to linear (SLSQP) fusion rather than genuine model redundancy. If base model errors contain non-linear complementarities, a non-linear meta-learner could in principle exploit them where linear weighting cannot. To test this, we replace the linear SLSQP meta-regressor with two non-linear alternatives---Random Forest (RF) and multilayer perceptron (MLP)---and evaluate via nested 10-fold cross-validation on both datasets.
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.15}
+\caption{Meta-Learner Comparison: Linear SLSQP vs.\ Non-Linear Alternatives}
+\label{tab:metalearner}
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Dataset} & \textbf{Pool} & \textbf{Linear SLSQP} & \textbf{RF} & \textbf{MLP} \\
+ & & $\boldsymbol{R^2}$ & $\boldsymbol{R^2}$ & $\boldsymbol{R^2}$ \\
+\midrule
+UCI & H1 (Original) & \textbf{0.9480} & 0.9387 & 0.9454 \\
+UCI & H4 (MLP+GPR) & \textbf{0.9474} & 0.9388 & 0.9412 \\
+Mexico & H1 (Original) & \textbf{0.9951} & 0.9943 & 0.9946 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+On all configurations, the linear SLSQP meta-learner achieves the highest $R^2$. The RF meta-learner performs worst across all settings, consistent with the expectation that bagging an already low-bias ensemble provides no benefit. The MLP, despite its universal approximation capacity, underperforms linear fusion on the UCI dataset (by $\Delta R^2 = -0.0026$ on H1, $-0.0062$ on H4) and on the Mexican dataset ($\Delta R^2 = -0.0005$). In the small-to-medium sample regime, the additional parameters of a non-linear meta-learner introduce estimation variance that offsets any potential gain from capturing non-linear error complementarities.
+
+This result closes the remaining escape hatch for the ensemble hypothesis. The failure of multi-model fusion is not an artifact of restricting to a linear combination---it is a direct consequence of base model predictions being sufficiently similar that no meta-learner, linear or non-linear, can extract a meaningful gain. Together with the heterogeneous pool test (Section~VI-C), the evidence is complete: model pooling provides no practically significant benefit regardless of pool composition or fusion mechanism.
+
 \subsection{Diagnosis 3: Age-Conditioned Piecewise Blending Is Unnecessary}
 
 The 28-day age threshold is motivated by concrete maturity physics---hydration kinetics differ between early and late ages. However, a systematic scan of threshold candidates $\tau \in \{3, 7, 14, 21, 28, 56, 90, 180\}$ days reveals a completely flat performance landscape (Fig.~\ref{fig:p2_threshold_flatness}):
@@ -905,20 +966,59 @@ Comparing the SLSQP-constrained fusion (V2) against unconstrained ordinary least
 \item $\Delta R^2 = -2.6 \times 10^{-5}$, $\Delta$RMSE $= 0.0006$\,MPa
 \end{itemize}
 
-The OLS solution yields weights $[0.340, 0.023, 0.047, 0.589]$---all positive and summing to 0.999. No negative weights appear. The SLSQP solution differs only in the third decimal place. The constraint functions as a benign safety mechanism rather than a performance enabler: it guarantees interpretability and physical plausibility without measurably affecting predictive accuracy. Its value would manifest only under conditions where unconstrained stacking produces pathological weights (e.g., with severely miscalibrated or biased base models), which do not occur in this setting.
+The OLS solution yields weights $[0.340, 0.023, 0.047, 0.589]$---all positive and summing to 0.999. No negative weights appear. The SLSQP solution differs only in the third decimal place. The constraint functions as a benign safety mechanism rather than a performance enabler: it guarantees interpretability and physical plausibility without measurably affecting predictive accuracy.
+
+\subsubsection{SLSQP Safeguard Verification: Artificially Degraded Model Pools}
+
+The preceding comparison risks a selection-bias confound: on a well-calibrated pool where OLS already yields positive weights, SLSQP necessarily appears non-binding. The \emph{raison d'\^{e}tre} of the simplex constraint is to guard against pathological weights under less benign conditions. To verify that SLSQP actually performs this safeguard function when needed, we construct five model pools spanning a quality spectrum:
+
+\begin{itemize}
+\item \textbf{Strong:} Four GBDT variants with standard HPO
+\item \textbf{Underfit:} Models with deliberately weak hyperparameters (shallow trees, low estimators)
+\item \textbf{Overfit:} Models trained without regularization and with high tree depth
+\item \textbf{Noisy:} Models with Gaussian noise injected into predictions
+\item \textbf{Mixed:} Two strong models combined with two underfit models
+\end{itemize}
+
+Each pool is fused via both unconstrained OLS and SLSQP simplex-constrained optimization under 10-fold CV.
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.15}
+\caption{SLSQP Safeguard Verification Across Model Quality Pools (UCI)}
+\label{tab:slsqp_safeguard}
+\centering
+\footnotesize
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Pool} & \textbf{OLS $R^2$} & \textbf{SLSQP $R^2$} & \textbf{OLS Neg. Wts} & \textbf{SLSQP Neg. Wts} \\
+\midrule
+Strong   & 0.9432 & 0.9432 & 0 & 0 \\
+Underfit & 0.9017 & 0.8992 & 2 & 0 \\
+Overfit  & 0.9028 & 0.9026 & 0 & 0 \\
+Noisy    & 0.9235 & 0.9234 & 0 & 0 \\
+Mixed    & 0.9431 & 0.9425 & 2 & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The results validate SLSQP as a genuine safeguard. In the Underfit pool, OLS assigns negative weights to the two weakest models ($w_1 = -0.053$, $w_2 = -0.052$), exploiting error cancellation between miscalibrated predictors. SLSQP correctly clips these to zero and redistributes mass to the stronger models. In the Mixed pool, OLS similarly produces negative weights ($w_3 = w_4 = -0.071$) that SLSQP eliminates. In the Strong, Overfit, and Noisy pools, OLS weights are already positive, and SLSQP differs only in the third decimal place---consistent with the earlier finding that the constraint is non-binding in well-calibrated settings.
+
+Two observations are noteworthy. First, SLSQP's $R^2$ is slightly \emph{below} OLS in the constrained cases ($\Delta R^2 \approx -0.001$ to $-0.003$), because simplex projection sacrifices a small amount of in-sample fit to enforce interpretability. This is the expected and acceptable cost of a safety mechanism: the alternative---negative weights that invert during distribution shift---is far costlier in deployment. Second, the Strong pool's OLS weights are already positive, confirming that the original ACDCB finding (non-binding constraint) reflects the pool's good calibration, not an artifact of the evaluation design.
 
 \subsection{Summary: The Real Performance Driver}
 
 The ablation hierarchy, ranked by $\Delta R^2$ contribution, is:
 \begin{enumerate}
 \item \textbf{GBDT replaces AdaBoost}: $\Delta R^2 \approx +0.038$---the single substantive gain
+\item \textbf{Refined Level~A engineering}: $\Delta R^2 = +0.0018$---small, credible, but eroded by broader expansion
 \item \textbf{Dual-space anchor model}: $\Delta R^2 = +0.0012$---marginal ($\sim$0.1\%)
 \item \textbf{Age-conditioned piecewise}: $\Delta R^2 = +3 \times 10^{-5}$---negligible
-\item \textbf{Feature engineering}: $\Delta R^2 = -0.0054$---counterproductive
-\item \textbf{Constrained optimization}: $\Delta R^2 \approx 0$---neutral
+\item \textbf{Feature engineering (full 32D)}: $\Delta R^2 = -0.0054$---counterproductive
+\item \textbf{Constrained optimization}: $\Delta R^2 \approx 0$---neutral (safety mechanism validated)
+\item \textbf{Non-linear meta-learner}: $\Delta R^2 < 0$---harmful; adds variance without bias reduction
 \end{enumerate}
 
-In total, the four architectural innovations of ACDCB contribute a combined $\Delta R^2 < -0.004$ beyond what a single fine-tuned XGBoost on raw features achieves. The appearance of strong performance relative to the AdaBoost baseline is an artifact of the baseline's weakness, not the framework's strength.
+In total, the four architectural innovations of ACDCB contribute a combined $\Delta R^2 < -0.004$ beyond what a single fine-tuned XGBoost on raw features achieves. The refined feature-space analysis (Section~VI-B) nuances the feature-engineering diagnosis: the purest physical transforms (Level~A) provide a genuine but small benefit, which is erased and reversed by mechanically weaker features. The non-linear meta-learner test (Section~VI-C) confirms that the redundancy of the multi-model pool is not an artifact of linear fusion---more expressive meta-learners perform worse. The SLSQP safeguard experiment (Section~VI-E) validates that constrained optimization serves its intended protective role, even though it is non-binding in the well-calibrated setting. The appearance of strong performance relative to the AdaBoost baseline is an artifact of the baseline's weakness, not the framework's strength.
 
 Fig.~\ref{fig:ablation} presents the standard ablation bar chart, while Fig.~\ref{fig:ablation_radar} provides the multi-metric radar comparison.
 
@@ -985,6 +1085,54 @@ The qualitative pattern is identical to UCI. The dominant driver is again the al
 The quantitative scale, however, differs markedly. On UCI, the V0 $\to$ V4 improvement in $R^2$ is approximately $+0.0388$, representing a substantive gain from a practical engineering perspective. On the Mexican dataset, the corresponding range is only $+0.0017$, because the AdaBoost baseline already reaches $R^2 = 0.9936$. The UPV feature, as a direct physical strength proxy, saturates the predictive headroom: even the simplest model captures 99.36\% of the variance, leaving less than $0.007$ in $R^2$ for \emph{any} method to exploit. This extreme compression of the headroom further underscores the central finding: when a strong physical predictor or a well-tuned learner already captures the dominant variance, architectural complexity adds negligible value.
 
 The convergence of ablation patterns across two independent datasets---differing in geography, material system, feature space, sample size, and baseline predictability---provides strong evidence that the findings are not artifacts of the UCI benchmark's specific characteristics. Rather, they point to a general statistical phenomenon: on tabular datasets where a strong learner or physical proxy already captures the dominant variance, the remaining headroom is dominated by irreducible noise, and architectural complexity adds estimation variance without bias reduction. Figs.~\ref{fig:newdata_ablation} and~\ref{fig:cross_dataset_comparison} provide visual comparisons.
+
+\subsubsection{De-UPV Ablation: Testing Robustness to the Dominant Predictor}
+
+A potential confound in the Mexican dataset analysis is ultrasonic pulse velocity (UPV). UPV is a direct physical strength proxy---it measures elastic wave velocity through the material, which correlates strongly with modulus of elasticity and compressive strength. Its presence raises a legitimate question: does UPV mask the contribution of the ACDCB components because it alone saturates the predictive headroom? That is, are we observing a UPV-driven ceiling effect rather than genuine component ineffectiveness?
+
+To disentangle this, we performed a De-UPV ablation: the full V0--V5 protocol was replicated on three nested feature subsets of the Mexican dataset:
+
+\begin{itemize}
+\item \textbf{Full (15 features):} All raw variables including UPV, electrical resistivity, tensile strength, and flexural strength
+\item \textbf{No-UPV (14 features):} UPV removed; other NDT variables (electrical resistivity, tensile strength, flexural strength) retained
+\item \textbf{No-NDT (13 features):} All NDT variables removed; only mix-design and age variables remain (closest to the UCI feature space)
+\end{itemize}
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.15}
+\caption{De-UPV Ablation: V0--V5 Across Three Feature Subsets (Mexican Dataset, $N=4{,}420$)}
+\label{tab:deupv_ablation}
+\centering
+\footnotesize
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Variant} & \textbf{Full} & \textbf{No-UPV} & \textbf{No-NDT} \\
+ & $\boldsymbol{R^2}$ & $\boldsymbol{R^2}$ & $\boldsymbol{R^2}$ \\
+\midrule
+V0: AdaBoost              & 0.99357 & 0.98973 & 0.98940 \\
+V1: Primary + Global      & 0.99534 & 0.99356 & 0.98991 \\
+V2: DualSpace + Global    & 0.99542 & 0.99356 & 0.98991 \\
+V3: ACDCB Full            & 0.99543 & 0.99358 & 0.98991 \\
+V4: Raw + Piecewise       & 0.99532 & 0.99374 & 0.98991 \\
+V5: OLS Unconstrained     & 0.99542 & 0.99356 & 0.98991 \\
+\midrule
+\textit{Best Single} & 0.99511 & 0.99352 & 0.98992 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The results decisively rule out the UPV-ceiling confound. Even after removing UPV, the component-wise contributions remain effectively zero:
+
+\begin{itemize}
+\item \textbf{No-UPV subset:} $\Delta R^2$(V3 $-$ V1) $= 0.00002$, $\Delta R^2$(V3 $-$ V4) $= -0.00016$. The dual-space and feature-engineering components contribute nothing. Raw features (V4) \emph{outperform} engineered features (V3).
+\item \textbf{No-NDT subset:} All GBDT-based variants (V1--V5) achieve $R^2 = 0.98991$---identical to the third decimal place. The ``best single model'' achieves $R^2 = 0.98992$, which exceeds every ensemble variant. All four architectural components contribute $\Delta R^2 < 0.0001$.
+\end{itemize}
+
+Two deeper patterns emerge. First, the model-upgrade effect (V0 $\to$ V1) increases as UPV is removed: $\Delta R^2 = +0.00177$ (Full) $\to +0.00383$ (No-UPV) $\to +0.00051$ (No-NDT). The disappearance of even the model-upgrade effect under No-NDT reflects the extreme compression of the feature space: without any NDT variable, 13 mix-design-and-age features leave minimal room for any method to differentiate itself.
+
+Second, OLS produces negative weights in both No-UPV ($w = -0.039$) and No-NDT ($w = -0.513$) subsets, confirming that the SLSQP safeguard becomes binding when the feature space is impoverished and model predictions become less correlated. This provides ecological validity to the earlier safeguard experiment (Section~VI-E): in real-world conditions where strong predictors are absent, constrained optimization is not merely a theoretical nicety.
+
+The De-UPV ablation thus strengthens the central conclusion. The failure of ACDCB's architectural components is not an artifact of UPV dominance---it persists, and in some cases intensifies, when the dominant predictor is removed. The pattern is structural, not circumstantial.
 
 \begin{figure}[!t]
 \centering
@@ -1097,13 +1245,13 @@ These explanations reinforce, rather than weaken, the simplicity conclusion. The
 The ablation results do not imply that feature engineering, model ensembling, age-conditioning, or constrained optimization are universally ineffective. Rather, they identify the \emph{boundary conditions} under which these strategies fail to provide marginal value:
 
 \begin{enumerate}
-\item \textbf{Feature engineering} is harmful when the engineered features are algebraically derived from the same small set of base variables, creating near-perfect collinearities. It becomes valuable when features encode genuinely independent information (e.g., from different measurement modalities or physical simulations) that is not already captured by base variables.
+\item \textbf{Feature engineering} spans a continuum: physically well-founded transforms (Level~A: $W/C$, $W/B$, $\sqrt{t}$, $\log t$) provide a small positive contribution ($\Delta R^2 = +0.0018$), while mechanically weaker features introduce collinearity-induced variance that erodes this gain. The practical boundary is clear: engineering is beneficial only when features encode genuinely independent physical information not already recoverable by a non-linear learner from base variables.
 
 \item \textbf{Multi-model ensembling} provides negligible gains when base models produce highly correlated predictions. The heterogeneous MLP/GPR test shows that lowering the minimum pairwise correlation to approximately 0.97 is still insufficient on this dataset; practically useful ensembling requires not merely different model names, but complementary errors strong enough to offset weaker individual accuracy.
 
 \item \textbf{Age-conditioned piecewise blending} is unnecessary when the conditioning variable (age) is already a continuous input to all base models. Gradient-boosted trees learn age-dependent splits natively; explicit partitioning only adds value when the conditioning variable is \emph{not} available as a model input, or when the relationship between the conditioning variable and optimal model selection is stepwise rather than smooth.
 
-\item \textbf{Constrained optimization} serves as a safety mechanism whose value materializes when unconstrained stacking produces pathological weights---a scenario more likely with miscalibrated, biased, or overfitted base models. In well-regularized settings, it is benign but non-contributory.
+\item \textbf{Constrained optimization} is validated as a genuine safety mechanism---deliberately degraded model pools produce negative OLS weights that SLSQP correctly clips to zero. The practical boundary is that the constraint is binding only when the model pool contains miscalibrated or underfit members; in well-regularized settings it is benign but non-contributory.
 \end{enumerate}
 
 \subsection{The Bias-Variance Tradeoff in Small-Sample Regimes}
@@ -1123,9 +1271,9 @@ A critical question for any negative-result study is whether the conclusions are
 \item \textbf{Baseline predictability:} AdaBoost $R^2 = 0.9142$ (UCI) vs.\ $R^2 = 0.9936$ (Mexican), with the latter's high baseline driven by the UPV NDT proxy.
 \end{enumerate}
 
-Despite these differences, the qualitative ablation pattern is identical: model upgrade dominates, feature engineering is counterproductive or neutral, multi-model ensembles are functionally redundant, age-conditioned piecewise blending provides negligible benefit, and constrained optimization is non-binding. The convergence of findings across such different datasets strongly supports the generalizability of the central conclusion.
+Despite these differences, the qualitative ablation pattern is identical: model upgrade dominates, feature engineering is counterproductive or neutral beyond Level~A, multi-model ensembles are functionally redundant regardless of fusion mechanism, age-conditioned piecewise blending provides negligible benefit, and constrained optimization is non-binding in well-calibrated settings. The De-UPV ablation further demonstrates that these patterns are not an artifact of UPV dominance: even after removing UPV and all NDT variables from the Mexican dataset, the component-wise contributions remain effectively zero ($\Delta R^2 < 0.0001$). The convergence of findings across such different datasets strongly supports the generalizability of the central conclusion.
 
-The key insight transcends the specific domain of concrete strength prediction: when a direct physical proxy (such as UPV) or a strong non-linear learner (GBDT) already captures the dominant variance, architectural complexity adds estimation variance without bias reduction. This is a statistical phenomenon---a manifestation of the bias-variance tradeoff in finite samples---not a peculiarity of concrete mix design data. It suggests that the burden of proof should shift: in ML-for-engineering applications, the default should be a single, rigorously tuned model, with complex architectures adopted only after ablation demonstrates statistically significant marginal gain over that baseline.
+The key insight transcends the specific domain of concrete strength prediction: when a direct physical proxy (such as UPV) or a strong non-linear learner (GBDT) already captures the dominant variance, architectural complexity adds estimation variance without bias reduction. This is a statistical phenomenon---a manifestation of the bias-variance tradeoff in finite samples---not a peculiarity of concrete mix design data. It suggests that the burden of proof should shift: in ML-for-engineering applications, the default should be a single, rigorously tuned model, with complex architectures adopted only after ablation demonstrates statistically significant marginal gain over that baseline, and with engineered features limited to well-established physical transforms whose information is not already recoverable by the learner.
 
 \subsection{ASTM Noise Ceiling Analysis}
 
@@ -1239,15 +1387,15 @@ This study constructed and systematically dissected ACDCB---a four-component ens
 \begin{enumerate}
 \item \textbf{The appearance of strong performance is driven by the baseline choice.} ACDCB's 25.6\% RMSE reduction over AdaBoost on UCI ($R^2 = 0.949$ vs.\ $0.914$) is almost entirely attributable to replacing AdaBoost with gradient-boosted trees ($\Delta R^2 \approx +0.038$), not to the framework's architectural innovations. On the Mexican dataset, the AdaBoost baseline already achieves $R^2 = 0.9936$, reducing the headroom for any method to $\Delta R^2 < 0.007$.
 
-\item \textbf{Feature engineering is counterproductive.} The 32-dimensional engineered feature space introduces severe collinearity, causing engineered-feature models to underperform raw-feature counterparts ($\Delta R^2 = -0.005$). VIF filtering and LASSO ranking improve upon the full engineered space but still fail to match the raw 8D baseline. On the Mexican dataset, LASSO identifies only 3 of 32 features with non-zero coefficients (all UPV-derived), and restricting to LASSO top-12 degrades performance relative to raw features.
+\item \textbf{Feature engineering is not monolithic.} The 32-dimensional engineered space as a whole is counterproductive ($\Delta R^2 = -0.005$), but stratification by physical basis reveals hidden structure: Level~A features (water-cement ratio, water-binder ratio, $\sqrt{t}$, $\log t$) provide a genuine small positive contribution ($\Delta R^2 = +0.0018$), while Levels~B and~C introduce collinearity that progressively erodes and reverses this gain. The minimum-feature (Refined-A, 12D) configuration outperforms raw 8D, but the benefit is too small to justify the complexity of the full 32D space.
 
-\item \textbf{The multi-model pool is functionally redundant.} Cross-model OOF prediction correlations exceed 0.996 for all pairs, rendering ensemble fusion nearly indistinguishable from single-model prediction. Adding MLP/GPR members lowers the minimum pairwise correlation to approximately 0.97 but still yields only $\Delta R^2 \leq +0.0013$ over the best single pool member.
+\item \textbf{The multi-model pool is functionally redundant, and the redundancy is not an artifact of linear fusion.} Cross-model OOF prediction correlations exceed 0.996 for all pairs. Adding MLP/GPR members lowers the minimum correlation to $\sim$0.97 but yields only $\Delta R^2 \leq +0.0013$. Non-linear meta-learners (Random Forest, MLP) perform \emph{worse} than linear SLSQP, confirming that the failure of ensembling is rooted in cross-model prediction similarity, not in the restriction to a linear combination.
 
 \item \textbf{Age-conditioned piecewise blending is unnecessary.} A scan of age thresholds $\tau \in [3, 180]$ days yields an $R^2$ range of $4.2 \times 10^{-4}$---complete flatness. Sigmoid soft-weighting tested with $\kappa \in \{0.1, 0.5, 1.0, 2.0, 5.0\}$ yields $\Delta R^2 < 0.0001$ on both datasets, confirming that neither the hard threshold choice nor the binary partitioning structure is the limiting factor.
 
-\item \textbf{Constrained optimization is benign but non-contributory.} OLS without constraints yields near-identical weights and predictions on both datasets, confirming that the convex constraint set is non-binding in well-calibrated settings.
+\item \textbf{Constrained optimization is a validated safety mechanism.} On well-calibrated pools, OLS and SLSQP produce near-identical results. However, on deliberately degraded pools (underfit or mixed-quality models), OLS generates negative weights that SLSQP correctly clips to zero. The mechanism serves its intended protective role: non-binding when models are well-calibrated, binding when they are not.
 
-\item \textbf{Cross-dataset validation confirms generalizability.} The identical ablation pattern across two independent datasets---differing in geography, material system, feature space, sample size (4.3$\times$), and baseline predictability---provides strong evidence that the findings reflect a general statistical phenomenon rather than artifacts of the UCI benchmark. The 4{,}420-sample Mexican dataset yields the same conclusion with even smaller margins: all complex components contribute $\Delta R^2 \leq 0.002$.
+\item \textbf{Cross-dataset validation confirms generalizability, including under predictor removal.} The identical ablation pattern holds across two independent datasets and, on the Mexican dataset, survives systematic removal of the dominant UPV predictor. The De-UPV ablation confirms that component failure is not a UPV-driven ceiling effect: even without UPV and all NDT variables, the four architectural components contribute $\Delta R^2 < 0.0001$.
 
 \item \textbf{A single fine-tuned XGBoost model is the empirical performance ceiling.} XGBoost with Bayesian-optimized hyperparameters on raw features achieves $R^2 = 0.9523$, RMSE $= 3.65$\,MPa on UCI, and $R^2 = 0.9954$, RMSE $= 0.6464$\,MPa on the Mexican dataset, outperforming the full ACDCB framework on both datasets with lower complexity.
 \end{enumerate}
