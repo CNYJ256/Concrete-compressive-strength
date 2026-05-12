@@ -136,26 +136,12 @@ ACDCB/
 │   ├── README.md
 │   └── processed/                  # 预处理中间产物
 │
-├── 📈 results/                     # 输出目录（自动生成）
-│   ├── 📁 metrics/                 # 评估指标 (JSON)
-│   ├── 📁 models/                  # 训练模型 (.joblib)
-│   ├── 📁 predictions/             # 预测结果 (CSV)
-│   ├── 📁 new_dataset/             # 墨西哥数据集结果
-│   └── 📁 presentation_work/       # 报告与演示
-│
-├── 📚 docs/                        # 文档与论文
-│   ├── README.md
-│   ├── 📁 papers/                  # 论文分析
-│   └── 📁 reports/                 # 实验报告
-│
-├── 📜 Latex/                       # LaTeX 手稿（IEEE 期刊）
-│   ├── bare_jrnl.tex
-│   ├── references.bib
-│   └── bibtex/
-│
-└── 🖼️ figures/                     # 输出图表
-    └── presentation_highres/
-```
+└─── 📚 docs/                        # 文档与论文
+    ├── README.md
+    └── 📁 reports/                 # 实验报告
+
+
+
 
 ---
 
@@ -447,5 +433,5 @@ scikit-learn, XGBoost, LightGBM, Optuna, SHAP, pandas, numpy, matplotlib
 ---
 
 **最后更新**：2026 年  
-**维护者**：ACDCB Project Team  
+**维护者**：CNYJ
 **反馈渠道**：GitHub Issues
