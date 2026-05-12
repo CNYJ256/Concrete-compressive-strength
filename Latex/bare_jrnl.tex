@@ -40,24 +40,24 @@
 \begin{document}
 
 % --- Title ---
-\title{ACDCB: Age-Conditioned Dual-Space Constrained Blending for Concrete Compressive Strength Prediction}
+\title{When Simplicity Suffices: A Component-Wise Dissection of an Ensemble Framework for Concrete Strength Prediction}
 
 % --- Authors ---
-\author{Author~Names,~\IEEEmembership{Institution,~City,~Country}
-\thanks{Manuscript received xxx; revised xxx.}}
+\author{Changbin~Huang, Taoyu~Yang, Xinyi~Wang, Hanlin Liu %<-
+\thanks{All authors are with the Department of Civil Engineering, Tongji University, Shanghai, 200092, China (e-mail: cnyj010@gmail.com).}}
 
-\markboth{IEEE Transactions on Engineering Structures,~Vol.~XX, No.~X, Month~2026}%
+\markboth{Academic English 2026}%
 {Author \MakeLowercase{\textit{et al.}}: ACDCB for Concrete Strength Prediction}
 
 \maketitle
 
 % --- Abstract ---
 \begin{abstract}
-This study proposes ACDCB (Age-Conditioned Dual-Space Constrained Blending), a novel ensemble learning framework designed to predict the compressive strength of concrete by capturing complex, age-dependent nonlinear mappings. The framework integrates dual feature spaces---a 32-dimensional primary space and a 22-dimensional anchor space---to balance expressiveness and robustness. Using four gradient-boosted tree models (XGBoost, LightGBM, and HistGradientBoosting), ACDCB employs a constrained weight optimization (SLSQP) strategy. To reflect concrete maturity physics, the blending weights are optimized separately for early-age ($\leq 28$ days) and late-age ($>28$ days) regimes. Validated on the UCI dataset, ACDCB achieved an $R^2$ of 0.9488 and an RMSE of 3.70\,MPa, marking a 25.6\% reduction in RMSE over the AdaBoost baseline. Ablation experiments demonstrate that the anchor space is critical for stability, while the piecewise blending provides physical interpretability: the anchor model dominates early-age predictions, whereas XGBoost's importance grows in late-age regimes. ACDCB offers a principled, modular, and physics-aware approach to material strength modeling, providing a significant improvement in both predictive accuracy and model interpretability for structural engineering applications.
+In the growing literature on machine learning for concrete strength prediction, ensemble frameworks combining feature engineering, multiple base models, and constrained fusion have been proposed as avenues toward higher accuracy. However, the marginal value of each added architectural component is rarely quantified. This study constructs ACDCB (Age-Conditioned Dual-Space Constrained Blending) as a controlled experimental vehicle---not as a recommended prediction framework---and conducts a systematic component-wise dissection on the UCI benchmark dataset (1{,}030 samples). The assembled ACDCB yields $R^2 = 0.949$ and RMSE $= 3.70$\,MPa, a 25.6\% RMSE reduction over the AdaBoost baseline, but controlled ablation reveals that nearly the entire gain ($\Delta R^2 = +0.033$) is attributable to replacing AdaBoost with gradient-boosted trees---not to feature engineering, dual-space design, age-conditioned piecewise blending, or constrained optimization. The 32-dimensional engineered feature space introduces severe collinearity; even after VIF filtering or LASSO ranking, engineered subsets remain below the raw 8-dimensional baseline. Heterogeneous MLP/GPR pool tests reduce cross-model correlations to approximately 0.97 but still yield only $\Delta R^2 \leq 0.0013$ over the best single member. The age-conditioned piecewise blending yields an $R^2$ gain of $3 \times 10^{-5}$ and a threshold scan across $\tau \in [3, 180]$ days confirms complete insensitivity. A fine-tuned single XGBoost model operating on the 8-dimensional raw features achieves $R^2 = 0.9523$ and RMSE $= 3.65$\,MPa, outperforming the full ACDCB framework with lower computational cost and higher interpretability. We conclude that for small-to-medium tabular datasets in structural engineering, rigorous hyperparameter optimization of a single strong learner constitutes the empirical performance ceiling, and that additional architectural complexity should be adopted only after demonstrating statistically significant marginal gain.
 \end{abstract}
 
 \begin{IEEEkeywords}
-concrete compressive strength, ensemble learning, age-conditioned blending, constrained optimization, dual feature spaces, gradient boosting.
+concrete compressive strength, ensemble learning, model simplicity, ablation analysis, gradient boosting, benchmark evaluation.
 \end{IEEEkeywords}
 
 \IEEEpeerreviewmaketitle
@@ -70,29 +70,36 @@ concrete compressive strength, ensemble learning, age-conditioned blending, cons
 
 Over the past two decades, machine learning (ML) methods have emerged as powerful alternatives. Artificial neural networks (ANN), support vector machines (SVM), and ensemble methods---particularly AdaBoost with decision tree weak learners---have demonstrated progressively improving predictive accuracy on the UCI benchmark dataset \cite{yeh1998concrete,chou2014machine}. Notably, the AdaBoost-based approach reported by Feng et al.\ \cite{feng2020machine} achieved a 10-fold cross-validated $R^2$ of approximately 0.95 and RMSE below 5\,MPa, establishing a strong baseline for subsequent work.
 
-However, three structural limitations persist across existing approaches:
+\subsection{The Complexity Escalation Problem}
+
+A discernible trend in recent civil engineering ML literature is the proliferation of increasingly complex prediction frameworks: multi-stage ensembles, dual-stream architectures, physics-informed feature engineering pipelines, and constrained optimization layers are combined into composite models whose individual components are rarely evaluated in isolation \cite{chou2014machine,erdal2013prediction}. While each additional component is motivated by plausible reasoning---feature engineering encodes domain knowledge, multiple base models capture complementary patterns, age-conditioning reflects hydration kinetics, and constrained optimization prevents instability---the \emph{marginal contribution} of each component to predictive accuracy is seldom quantified through rigorous ablation.
+
+This trend raises a methodological concern: \textbf{are we over-engineering prediction models for datasets whose inherent complexity may be adequately captured by a single, well-tuned learner?} On the UCI concrete dataset ($N = 1{,}030$, $D = 8$ base variables), gradient-boosted trees with default hyperparameters already achieve $R^2 > 0.92$. The headroom for further improvement is bounded by dataset noise, measurement error, and the fundamental predictability limit of concrete strength from bulk mix proportions alone. In this regime, architectural complexity may introduce additional estimation variance without commensurate bias reduction---a manifestation of the bias-variance tradeoff in small-sample settings.
+
+\subsection{Research Questions and Approach}
+
+This study subjects a representative complex ensemble framework---ACDCB (Age-Conditioned Dual-Space Constrained Blending)---to systematic component-wise ablation to answer four questions:
 
 \begin{enumerate}
-\item \textbf{Mono-representation}: All models operate on a single feature space---typically the raw mix proportions or a fixed set of engineered ratios. No existing framework systematically exploits \emph{complementary} feature representations that trade off expressiveness and robustness.
-
-\item \textbf{Age-agnostic integration}: While concrete strength development is fundamentally age-dependent---governed by distinct hydration kinetics in early ($\leq 28$ days) versus later ages---most ensemble methods apply uniform blending weights across all ages, failing to adapt to regime-specific model competencies.
-
-\item \textbf{Unconstrained model combination}: Standard ensemble stacking and averaging impose no formal constraints on combination weights. Negative or unbounded weights, while occasionally improving point estimates, obscure interpretability and can produce physically implausible extrapolations.
+\item \textbf{Feature engineering}: Does expanding 8 raw variables to 32 engineered features improve prediction, or does collinearity-induced variance dominate?
+\item \textbf{Multi-model ensemble}: Do three gradient-boosted tree variants (XGBoost, LightGBM, HGB) provide complementary predictions, or are they functionally redundant?
+\item \textbf{Age-conditioned piecewise blending}: Does partitioning the dataset at 28 days produce meaningfully different fusion weights and improved predictions?
+\item \textbf{Constrained optimization}: Does simplex-constrained SLSQP optimization yield different weights or predictions compared to unconstrained ordinary least squares?
 \end{enumerate}
 
-To address these gaps, we propose \textbf{ACDCB} (Age-Conditioned Dual-Space Constrained Blending), a framework characterized by four design principles:
+To answer these questions, we construct ACDCB following its original design specification and then progressively disable each component, measuring the resulting change in 10-fold cross-validated $R^2$ and RMSE. We stress that ACDCB is not proposed as a recommended prediction framework; rather, it is deliberately constructed as a controlled experimental vehicle to isolate the marginal contribution of each architectural component commonly advocated in the civil engineering ML literature. We further benchmark the full framework against a single XGBoost model with hyperparameters optimized via Bayesian search on the raw 8-dimensional features.
+
+Our contributions are:
 
 \begin{itemize}
-\item \textbf{Dual Feature Spaces (D)}: Two feature representations---\emph{primary} (32 dimensions, expression-oriented) and \emph{anchor} (22 dimensions, robustness-oriented)---are constructed from the same 8 base variables through systematic civil engineering feature engineering. Each space feeds a dedicated subset of base models.
+\item \textbf{Empirical}: A comprehensive ablation study demonstrating that three of ACDCB's four architectural components---feature engineering, model pool diversity, and age-conditioned piecewise blending---contribute negligible or negative marginal gain on the UCI dataset. The sole substantive improvement over the AdaBoost baseline is driven by the replacement of AdaBoost with modern gradient-boosted trees.
 
-\item \textbf{Constrained Blending (C, B)}: Model combination weights are learned through constrained optimization (SLSQP), minimizing RMSE subject to the convex constraints $w_i \geq 0$ and $\sum_i w_i = 1$. This ensures weights are directly interpretable as ``contribution shares.''
+\item \textbf{Methodological}: A detailed diagnosis of \emph{why} each component fails: feature collinearity (15 pairs with $|r| > 0.90$) inflates variance; cross-model prediction correlations exceeding 0.996 render the multi-model pool redundant; and the age-threshold performance landscape is completely flat across $\tau \in [3, 180]$ days.
 
-\item \textbf{Age Conditioning (A, C)}: The dataset is partitioned at the 28-day curing threshold---a physically meaningful engineering landmark---and separate blending weights are optimized for each regime.
-
-\item \textbf{Multi-Model Pool}: Four gradient-boosted tree variants (XGBoost, LightGBM, HistGradientBoosting, and an anchor-space HistGradientBoosting) constitute the candidate model pool, selected for their complementary inductive biases.
+\item \textbf{Prescriptive}: Evidence that a single XGBoost model, tuned via 200-trial Bayesian optimization on raw features, achieves $R^2 = 0.9523$ and RMSE $= 3.65$\,MPa---outperforming the full ACDCB framework ($R^2 = 0.9494$, RMSE $= 3.75$\,MPa) with lower computational complexity and full interpretability. We propose that rigorous single-model optimization should serve as the mandatory baseline before additional architectural complexity is adopted.
 \end{itemize}
 
-The remainder of this paper is organized as follows. Section~2 describes the experimental database and preprocessing pipeline. Section~3 presents the mathematical foundations of the baseline models and the ACDCB framework. Section~4 details the implementation and training strategy. Section~5 reports model validation and evaluation results. Section~6 presents the ablation study decomposing component contributions. Section~7 provides comparative analysis against prior work. Sections~8 and~9 offer discussion and conclusions, respectively.
+The remainder of this paper is organized as follows. Section~II describes the experimental database and preprocessing pipeline. Section~III presents the mathematical foundations of the baseline models and the ACDCB framework. Section~IV details the implementation and training strategy. Section~V reports model validation and evaluation results. Section~VI presents the ablation study---the core of this work---decomposing component contributions and diagnosing failure modes. Section~VII provides comparative analysis against prior work. Section~VIII discusses the implications for model design in structural engineering ML, and Section~IX concludes.
 
 %==========================================================================
 \section{Experimental Database}
@@ -165,17 +172,35 @@ The mechanistic features include:
 \begin{align}
 &\frac{W}{C},\; \frac{W}{B},\; \frac{SP}{B},\; \frac{S + FA}{B},\; \frac{FA_g}{TA} \notag\\
 &t_{\log},\; \sqrt{t},\; t^{0.25} \notag\\
-&\text{Abrams Index} = \frac{t_{\log}}{W/B},\; C \cdot t_{\log},\; B \cdot t_{\log},\; \frac{W}{B} \cdot t_{\log} \notag\\
-&\text{Paste Index} = \frac{C + S + FA + W + SP}{TA} \notag
+&\text{Abrams Index}^{\dagger} = \frac{t_{\log}}{W/B},\; C \cdot t_{\log},\; B \cdot t_{\log},\; \frac{W}{B} \cdot t_{\log} \notag\\
+&\text{Paste Index}^{\dagger} = \frac{C + S + FA + W + SP}{TA} \notag
 \end{align}
 
-These features encode well-established concrete engineering principles: water-binder ratio governs ultimate strength (Abrams' law), binder-age interactions capture maturity effects, and paste-to-aggregate ratios reflect volumetric composition.
+These features are not equally grounded in established concrete mechanics. Water-binder ratio has direct support from Abrams' law, whereas several interaction or index terms are hypothesis-driven constructs introduced only to test whether tree models can exploit derived quantities. Table~\ref{tab:feature_basis} therefore reports the physical-basis level assigned to engineered feature groups. C-level features are marked by $\dagger$ when introduced.
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.15}
+\caption{Physical-Basis Levels for Engineered Features}
+\label{tab:feature_basis}
+\centering
+\begin{tabular}{p{0.11\columnwidth}p{0.36\columnwidth}p{0.40\columnwidth}}
+\toprule
+\textbf{Level} & \textbf{Meaning} & \textbf{Representative features} \\
+\midrule
+A & Established physical model & $W/B$ (Abrams' law), age/maturity trend \\
+B & Dimensional or mechanistic rationale, no unique accepted model & $W/C$, $SP/B$, SCM ratio, paste-to-aggregate ratio \\
+C & Hypothesis-driven construct without established physical model & Abrams index$^\dagger$, maturity index$^\dagger$, inverse age, compound interaction indices \\
+\bottomrule
+\end{tabular}
+\vspace{0.5mm}
+{\footnotesize $^\dagger$ These features are hypothesis-driven constructs without established physical models; they are included to test whether ML models can exploit such derived quantities.}
+\end{table}
 
 \subsubsection{Tier 2 --- Enhanced Features}
 Primary space only, 10 additional features:
 \begin{align}
 &\frac{B}{TA},\; \frac{W}{W + B + SP},\; \frac{C}{B},\; \frac{S}{B},\; \frac{FA}{B} \notag\\
-&\frac{SP}{W},\; t_{\log} \cdot \frac{B}{W},\; \frac{TA}{B},\; \frac{1}{t + 1},\; t_{\log} \cdot \frac{W}{C} \notag
+&\frac{SP}{W},\; t_{\log} \cdot \frac{B}{W}^{\dagger},\; \frac{TA}{B},\; \frac{1}{t + 1}^{\dagger},\; t_{\log} \cdot \frac{W}{C}^{\dagger} \notag
 \end{align}
 
 The primary space thus contains 32 dimensions (8 base $+$ 14 mechanistic $+$ 10 enhanced), while the anchor space contains 22 dimensions (8 base $+$ 14 mechanistic).
@@ -185,6 +210,8 @@ After feature engineering, all infinite values (resulting from division by near-
 %==========================================================================
 \section{Methodology}
 %==========================================================================
+
+The ACDCB framework described below is constructed for the purpose of systematic ablation, embodying four architectural strategies whose individual and combined effects are tested in Section~VI.
 
 \subsection{Baseline Models}
 
@@ -475,31 +502,40 @@ MAPE expresses error relative to the true value, facilitating cross-dataset comp
 
 \subsection{Single Model Performance}
 
-Table~\ref{tab:single_model} reports the 10-fold OOF performance of each candidate model in the ACDCB pool.
+Table~\ref{tab:single_model} reports the 10-fold OOF performance of each candidate model in the ACDCB pool, along with additional single models trained on raw 8-dimensional features with independently optimized hyperparameters.
 
 \begin{table}[!t]
 \renewcommand{\arraystretch}{1.2}
-\caption{Single Model 10-Fold OOF Performance (Mean $\pm$ Std)}
+\caption{Single Model 10-Fold OOF Performance}
 \label{tab:single_model}
 \centering
-\begin{tabular}{lp{2.8cm}cccc}
+\footnotesize
+\begin{tabular}{lp{2.2cm}cccc}
 \toprule
-\textbf{Model} & \textbf{Feature Space} & $\boldsymbol{R^2}$ & \textbf{RMSE} & \textbf{MAE} & \textbf{MAPE} \\
+\textbf{Model} & \textbf{Space} & $\boldsymbol{R^2}$ & \textbf{RMSE} & \textbf{MAE} & \textbf{MAPE} \\
  & & & \textbf{(MPa)} & \textbf{(MPa)} & \textbf{(\%)} \\
 \midrule
-XGBoost   & Primary (32-dim)  & 0.945934 & 3.7817 & 2.4618 & 8.930 \\
-LightGBM  & Primary (32-dim)  & 0.945652 & 3.8052 & 2.4799 & 8.878 \\
-HGB       & Primary (32-dim)  & 0.945497 & 3.8090 & 2.4259 & 8.717 \\
-\textbf{HGB\_Anchor} & \textbf{Anchor (22-dim)} & \textbf{0.947965} & \textbf{3.7408} & \textbf{2.3683} & \textbf{8.529} \\
+\multicolumn{6}{c}{\textit{Engineered-Feature Models (ACDCB Pool)}} \\
+\midrule
+XGBoost   & Primary (32D)  & 0.9469 & 3.8475 & 2.5021 & 9.108 \\
+LightGBM  & Primary (32D)  & 0.9465 & 3.8622 & 2.5104 & 9.023 \\
+HGB       & Primary (32D)  & 0.9462 & 3.8735 & 2.4428 & 8.847 \\
+HGB\_Anchor & Anchor (22D)  & 0.9485 & 3.7882 & 2.3902 & 8.642 \\
+\midrule
+\multicolumn{6}{c}{\textit{Raw-Feature Models (Independently Tuned)}} \\
+\midrule
+XGBoost   & Raw (8D)       & \textbf{0.9523} & \textbf{3.6457} & \textbf{2.3501} & 8.259 \\
+LightGBM  & Raw (8D)       & 0.9512 & 3.6900 & 2.3928 & \textbf{8.206} \\
+HGB       & Raw (8D)       & 0.9498 & 3.7415 & 2.4481 & 8.451 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-A notable finding is that the HGB\_Anchor model---operating on the lower-dimensional (22-dim) anchor space---outperforms all three primary-space models across every metric. This suggests that the anchor feature space, by excluding potentially noisy enhanced features, achieves a favorable bias-variance tradeoff for this dataset size ($N = 1{,}030$). The consistent $R^2$ values (0.9455--0.9480) across all four models indicate robust feature engineering.
+Two findings from Table~\ref{tab:single_model} are notable. First, within the engineered-feature pool, the lower-dimensional anchor space (22D) outperforms the primary space (32D) across all metrics, consistent with the hypothesis that additional Tier-2 features introduce variance without commensurate bias reduction. Second, all three raw-feature models outperform their engineered-feature counterparts, with XGBoost on 8 raw dimensions achieving the highest $R^2$ (0.9523) and lowest RMSE (3.65\,MPa) among all single models tested. This result contradicts the expectation that domain-informed feature engineering improves tree-based models and provides the first quantitative evidence for the ablation analysis that follows.
 
 \subsection{ACDCB Ensemble Performance}
 
-Table~\ref{tab:ensemble} compares the ACDCB ensemble against the baseline models and the internal component strategies.
+Table~\ref{tab:ensemble} compares the ACDCB ensemble against baseline models and a single fine-tuned XGBoost on raw features.
 
 \begin{table}[!t]
 \renewcommand{\arraystretch}{1.15}
@@ -507,32 +543,27 @@ Table~\ref{tab:ensemble} compares the ACDCB ensemble against the baseline models
 \label{tab:ensemble}
 \centering
 \small
-\begin{tabular}{p{1.95cm}cccc}
+\begin{tabular}{p{2.1cm}cccc}
 \toprule
 \textbf{Method} & $\boldsymbol{R^2}$ & \textbf{RMSE} & \textbf{MAE} & \textbf{MAPE} \\
  & & \textbf{(MPa)} & \textbf{(MPa)} & \textbf{(\%)} \\
 \midrule
-AdaBoost (Paper1)       & 0.9090 & 4.9695 & 3.5085 & 13.351 \\
-ANN (Paper2)            & 0.9160 & 4.7273 & 3.3637 & 11.909 \\
-SVM (Paper2)            & 0.8713 & 5.8492 & 4.2099 & 14.728 \\
-Best single (HGB\_Anchor) & 0.9480 & 3.7408 & 2.3683 & 8.529 \\
-ACDCB Global Blend      & 0.9487 & 3.7001 & 2.3511 & \textbf{8.487} \\
-\textbf{ACDCB Age-Piecewise} & \textbf{0.9488} & \textbf{3.6996} & \textbf{2.3522} & 8.488 \\
+AdaBoost (Feng 2020)    & 0.9142 & 4.8025 & 3.1466 & 11.388 \\
+ANN (Yeh 1998)          & 0.9160 & 4.7273 & 3.3637 & 11.909 \\
+SVM (RBF)               & 0.8713 & 5.8492 & 4.2099 & 14.728 \\
+Best single (HGB\_Anchor) & 0.9485 & 3.7882 & 2.3902 & 8.642 \\
+ACDCB Global Blend      & 0.9487 & 3.7000 & 2.3510 & 8.487 \\
+ACDCB Age-Piecewise     & 0.9488 & 3.6996 & 2.3522 & 8.488 \\
+\textbf{XGBoost Raw (Tuned)} & \textbf{0.9523} & \textbf{3.6457} & \textbf{2.3501} & \textbf{8.259} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The ACDCB Age-Piecewise strategy achieves the highest $R^2$ and lowest RMSE among all methods. Relative to the AdaBoost baseline:
-\begin{itemize}
-\item $\Delta R^2 = +0.0398$ (4.38\% relative improvement)
-\item $\Delta\text{RMSE} = -1.27$\,MPa (25.6\% reduction)
-\item $\Delta\text{MAE} = -1.16$\,MPa (33.0\% reduction)
-\item $\Delta\text{MAPE} = -4.86$ percentage points (36.4\% reduction)
-\end{itemize}
+The key observation from Table~\ref{tab:ensemble} is that the single fine-tuned XGBoost on raw features achieves the best performance across all metrics, outperforming all ACDCB variants. The ACDCB Age-Piecewise variant yields only a marginal gain over the Global Blend ($\Delta R^2 = +3 \times 10^{-5}$, $\Delta\text{RMSE} = -0.0005$\,MPa)---a difference far below any threshold of practical or statistical significance.
 
-The piecewise variant edges out the global blend by a narrow margin ($\Delta R^2 = +3 \times 10^{-5}$, $\Delta\text{RMSE} = -0.0005$\,MPa), selected by the hierarchical rule.
+Relative to the AdaBoost baseline, all GBDT-based methods achieve substantial gains ($\Delta R^2 \approx +0.035$), but the improvement is attributable to the switch from AdaBoost to gradient-boosted trees, not to the ensemble architecture. The gap between ACDCB and the single XGBoost Raw model ($\Delta R^2 = -0.0035$, $\Delta\text{RMSE} = +0.054$\,MPa) demonstrates that the ensemble framework's additional complexity does not translate into additional accuracy.
 
-The true-versus-predicted scatter comparison between AdaBoost and ACDCB is shown in Figs.~\ref{fig:scatter_ada} and~\ref{fig:scatter_acdcb}, demonstrating visibly tighter clustering around the $y = x$ reference line for ACDCB, particularly in the high-strength regime ($>$60\,MPa) where AdaBoost exhibits systematic underprediction.
+Scatter plots comparing AdaBoost and ACDCB predictions against true values are provided in Figs.~\ref{fig:scatter_ada} and~\ref{fig:scatter_acdcb}.
 
 \begin{figure}[!t]
 \centering
@@ -550,7 +581,7 @@ The true-versus-predicted scatter comparison between AdaBoost and ACDCB is shown
 
 \subsection{Learned Blending Weights}
 
-The optimized piecewise weights (illustrated in Fig.~\ref{fig:weights}) reveal regime-specific model competencies:
+The optimized piecewise weights at $\tau = 28$ days are:
 
 \textbf{Early age ($t \leq 28$ days):}
 \begin{equation}
@@ -562,7 +593,9 @@ The optimized piecewise weights (illustrated in Fig.~\ref{fig:weights}) reveal r
 \mathbf{w}_l = [0.463,\; 0.000,\; 0.122,\; 0.415]
 \end{equation}
 
-The HGB\_Anchor model dominates early-age predictions (63.3\% weight), consistent with its best-in-class single-model performance. In late-age regimes, XGBoost gains prominence (46.3\%), while LightGBM is entirely suppressed ($w_2 = 0$). This weight shift reflects the different nonlinear patterns governing early versus late-age strength development---early-age strength is largely controlled by water-binder ratio and hydration rate (well-captured by the anchor space), while late-age strength involves more complex microstructural evolution that benefits from XGBoost's regularized boosting.
+The HGB\_Anchor model receives the largest weight in both regimes, consistent with its best-in-class single-model performance. XGBoost's weight increases from 0.314 (early) to 0.463 (late), while LightGBM is nearly entirely suppressed. However, as demonstrated by the threshold scan in Section~VI-D, these weight differences do not translate into measurable predictive improvement: the $R^2$ variation across $\tau \in [3, 180]$ days is only $4.2 \times 10^{-4}$. The weight shift is a descriptive artifact of the optimization procedure rather than evidence of functionally distinct model competencies across age regimes.
+
+Fig.~\ref{fig:weights} visualizes the weight distribution across the two regimes.
 
 \begin{figure}[!t]
 \centering
@@ -572,10 +605,10 @@ The HGB\_Anchor model dominates early-age predictions (63.3\% weight), consisten
 \end{figure}
 
 %==========================================================================
-\section{Ablation Study}
+\section{Ablation Study: Component-Wise Dissection}
 %==========================================================================
 
-To isolate the contribution of each architectural component, we conduct a systematic ablation study with controlled variants. Five configurations are evaluated:
+To isolate the marginal contribution of each ACDCB architectural component, we conduct a systematic ablation study with controlled variants. Six configurations are evaluated, with V4 using independent Bayesian-optimized hyperparameters on raw features to ensure fair comparison:
 
 \begin{table}[!t]
 \renewcommand{\arraystretch}{1.2}
@@ -586,66 +619,242 @@ To isolate the contribution of each architectural component, we conduct a system
 \toprule
 \textbf{Variant} & \textbf{Key Description} \\
 \midrule
-V0 (Paper1 AdaBoost)    & Single AdaBoost model on raw features \\
+V0 (AdaBoost)    & Single AdaBoost model on raw features \\
 V1 (Primary $+$ Global)  & 3 primary-space models, global constrained blend, no anchor \\
 V2 (DualSpace $+$ Global) & Full 4-model pool, global constrained blend \\
 V3 (ACDCB --- Full)     & Full 4-model pool, age-conditioned piecewise blend \\
 V4 (Raw $+$ Piecewise)   & 4 models on 8 raw features, age-piecewise blend \\
+V5 (OLS Unconstrained)   & 4 models, unconstrained linear regression stacking \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-All variants use identical cross-validation folds (10-fold, random state 42) and the same constrained optimization (SLSQP, $\mathcal{W}$ constraints).
+All variants use identical cross-validation folds (10-fold, random state 42). V1--V3 and V5 use hyperparameters optimized on the 32-dimensional primary space; V4 uses independently optimized hyperparameters on the 8-dimensional raw space \cite{chen2016xgboost,ke2017lightgbm}.
 
-\subsection{Component-wise Contributions}
+\subsection{Component-Wise Contributions}
 
-Table~\ref{tab:ablation} reports the ablation results.
+Table~\ref{tab:ablation} reports the ablation results with standard deviations across folds.
 
 \begin{table}[!t]
 \renewcommand{\arraystretch}{1.2}
-\caption{Ablation Results (10-Fold Mean Metrics)}
+\caption{Ablation Results with Fold-Wise Standard Deviations}
 \label{tab:ablation}
 \centering
-\begin{tabular}{p{2.8cm}cccc}
+\footnotesize
+\begin{tabular}{p{2.6cm}cc}
 \toprule
-\textbf{Variant} & $\boldsymbol{R^2}$ & \textbf{RMSE (MPa)} & \textbf{MAE (MPa)} & \textbf{MAPE (\%)} \\
+\textbf{Variant} & $\boldsymbol{R^2}$ & \textbf{RMSE (MPa)} \\
 \midrule
-V0: Paper1 AdaBoost      & 0.9090 & 4.9695 & 3.5085 & 13.351 \\
-V1: Primary $+$ Global     & 0.9479 & 3.7430 & 2.3710 & 8.543 \\
-V2: DualSpace $+$ Global   & 0.9484 & 3.7120 & 2.3620 & 8.510 \\
-V3: ACDCB (Full)         & \textbf{0.9488} & \textbf{3.6996} & \textbf{2.3522} & 8.488 \\
-V4: Raw $+$ Piecewise     & 0.9506 & 3.6335 & 2.3688 & \textbf{8.327} \\
+V0: AdaBoost           & 0.9142 $\pm$ 0.0222 & 4.8025 $\pm$ 0.5898 \\
+V1: Primary $+$ Global   & 0.9475 $\pm$ 0.0216 & 3.7309 $\pm$ 0.7009 \\
+V2: DualSpace $+$ Global & 0.9487 $\pm$ 0.0195 & 3.7000 $\pm$ 0.6453 \\
+V3: ACDCB (Full)       & 0.9488 $\pm$ 0.0195 & 3.6996 $\pm$ 0.6452 \\
+V4: Raw $+$ Piecewise   & \textbf{0.9530} $\pm$ \textbf{0.0173} & \textbf{3.5401} $\pm$ \textbf{0.6048} \\
+V5: OLS Unconstrained   & 0.9487 $\pm$ 0.0195 & 3.6994 $\pm$ 0.6450 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The ablation results (visualized in Fig.~\ref{fig:ablation}) reveal a clear hierarchy of contributions:
+\subsection{Diagnosis 1: Feature Engineering Introduces Harmful Collinearity}
 
+The contribution of feature engineering is isolated by comparing V0 (AdaBoost, raw features) to V1 (3 GBDT models, engineered features). However, this comparison conflates two simultaneous changes: replacing AdaBoost with GBDT \emph{and} expanding the feature space from 8 to 32 dimensions. To disentangle these effects, we compare:
+
+\begin{itemize}
+\item \textbf{Algorithm upgrade (AdaBoost $\to$ GBDT)}: A single XGBoost on 8 raw features achieves $R^2 = 0.9523$, while AdaBoost achieves $R^2 = 0.9142$. The algorithm change alone accounts for $\Delta R^2 = +0.0381$.
+\item \textbf{Feature engineering (8D $\to$ 32D)}: XGBoost on 32 engineered features achieves $R^2 = 0.9469$, which is \emph{lower} than XGBoost on 8 raw features ($R^2 = 0.9523$). The feature engineering step contributes $\Delta R^2 = -0.0054$---a net \emph{negative} effect.
+\end{itemize}
+
+Fig.~\ref{fig:p2_collinearity} reveals the mechanism behind this deterioration: among the 24 engineered features, 15 pairs exhibit Pearson correlations exceeding $|r| > 0.90$. For example, the Abrams index and maturity index are perfectly collinear ($r = 1.000$), as are the supplementary cementitious material ratio and cement fraction in binder ($r = -1.000$). Three age transformations (log, sqrt, 0.25-power) are inter-correlated at $r > 0.98$. In gradient boosting, each additional feature introduces a new split candidate; when features are highly collinear, the gain in bias reduction from additional splits is offset by increased estimation variance, particularly in the small-sample regime ($N = 1{,}030$).
+
+Stepwise feature ablation confirms this diagnosis: a default HGB model achieves $R^2 = 0.9387$ on the full 32D space, $R^2 = 0.9406$ after removing the 10 Tier-2 features (22D anchor space), and $R^2 = 0.9413$ on the 8 raw features. \textbf{Removing engineered features improves performance.}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_p2_feature_collinearity}
+\caption{Correlation matrix of the 24 engineered features in the primary space. 15 pairs exhibit $|r| > 0.90$, creating a collinear feature landscape that inflates estimation variance without commensurate bias reduction.}
+\label{fig:p2_collinearity}
+\end{figure}
+
+\subsubsection{Collinearity Mitigation: A Controlled Test}
+
+The preceding diagnosis based on Pearson correlation alone does not fully exclude a confounder: engineered features might fail only because the collinear representation was not properly regularized. To test this possibility, we performed an explicit feature-selection validation. Variance inflation factors (VIFs) were computed for the full 32-dimensional engineered space, and features were iteratively removed until all remaining variables satisfied VIF $<10$ or VIF $<5$ \cite{belsley1980regression,dormann2013collinearity}. In parallel, LASSO was used to rank engineered features, and top-$K$ subsets ($K=8,12,16,20$) were evaluated. To isolate the effect of feature selection itself, the tuned raw-XGBoost hyperparameters were fixed across all groups.
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.15}
+\caption{VIF/LASSO Feature-Selection Validation with XGBoost}
+\label{tab:feature_selection}
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Group} & \textbf{Dim.} & \textbf{$R^2$} & \textbf{RMSE (MPa)} \\
+\midrule
+G1 Raw baseline & 8  & \textbf{0.9516} $\pm$ 0.0167 & \textbf{3.5950} $\pm$ 0.6061 \\
+G2 Full engineered & 32 & 0.9429 $\pm$ 0.0237 & 3.8898 $\pm$ 0.7624 \\
+G3 VIF $<10$ & 10 & 0.9487 $\pm$ 0.0206 & 3.6878 $\pm$ 0.6927 \\
+G4 VIF $<5$ & 8 & 0.9454 $\pm$ 0.0190 & 3.8179 $\pm$ 0.6925 \\
+G5 LASSO top-8 & 8 & 0.9414 $\pm$ 0.0305 & 3.8767 $\pm$ 0.9048 \\
+G5 LASSO top-12 & 12 & 0.9470 $\pm$ 0.0219 & 3.7440 $\pm$ 0.6906 \\
+G5 LASSO top-16 & 16 & 0.9474 $\pm$ 0.0217 & 3.7334 $\pm$ 0.6802 \\
+G5 LASSO top-20 & 20 & 0.9452 $\pm$ 0.0227 & 3.8055 $\pm$ 0.7042 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The result is decisive: VIF filtering improves upon the full 32D engineered space but does not recover the raw-feature baseline. The best filtered subset (VIF $<10$) reaches $R^2=0.9487$, still below the raw 8D baseline ($R^2=0.9516$). The best LASSO subset (top-16) similarly remains below the raw baseline by $\Delta R^2=-0.0042$. Therefore, the negative contribution of feature engineering cannot be attributed solely to naive collinearity handling; even after explicit collinearity mitigation and sparse selection, the engineered representation provides no measurable benefit for the tuned tree learner.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_vif_bar}
+\caption{VIF distribution for the full engineered feature space. Several algebraically coupled features have infinite or extremely large VIFs, requiring substantial pruning before standard thresholds are satisfied.}
+\label{fig:vif_bar}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_lasso_path}
+\caption{LASSO coefficient paths for standardized engineered features. Multiple correlated feature groups enter together, indicating that sparse linear selection does not isolate a clearly superior engineered subset.}
+\label{fig:lasso_path}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_feature_selection_comparison}
+\caption{Performance comparison of raw, full engineered, VIF-filtered, and LASSO-selected feature groups. All engineered subsets remain below the raw 8D XGBoost baseline.}
+\label{fig:feature_selection_comparison}
+\end{figure}
+
+\subsection{Diagnosis 2: The Multi-Model Pool Is Functionally Redundant}
+
+The ACDCB model pool comprises three gradient-boosted tree variants (XGBoost, LightGBM, HGB) motivated by their ``complementary inductive biases.'' However, the pairwise Pearson correlations of their out-of-fold predictions, reported in Table~\ref{tab:model_corr}, reveal near-identical behavior.
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.2}
+\caption{Pairwise Pearson Correlation of OOF Predictions}
+\label{tab:model_corr}
+\centering
+\begin{tabular}{lcccc}
+\toprule
+& \textbf{XGBoost} & \textbf{LightGBM} & \textbf{HGB} & \textbf{HGB\_Anchor} \\
+\midrule
+XGBoost    & 1.0000 & 0.9978 & 0.9966 & 0.9967 \\
+LightGBM   &        & 1.0000 & 0.9975 & 0.9975 \\
+HGB        &        &        & 1.0000 & 0.9978 \\
+HGB\_Anchor &        &        &        & 1.0000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All cross-model correlations exceed 0.996, meaning the three models predict nearly identical functions of the input. Consequently, the benefit of model ensembling is negligible:
+
+\begin{itemize}
+\item Best single model (HGB\_Anchor): $R^2 = 0.9485$, RMSE $= 3.788$\,MPa
+\item Equal-weight fusion of all 4 models: $R^2 = 0.9490$, RMSE $= 3.773$\,MPa
+\item SLSQP-optimized fusion: $R^2 = 0.9494$, RMSE $= 3.756$\,MPa
+\end{itemize}
+
+The optimized fusion provides $\Delta R^2 = +0.0009$ over the best single model---an improvement of less than 0.1\%. The ensemble's variance reduction benefit, which theoretically scales as $1/M$ for independent estimators, is nullified by the near-perfect correlation among ensemble members. Fig.~\ref{fig:p2_model_corr} visualizes this redundancy through the OOF prediction scatter matrix.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_p2_model_corr_matrix}
+\caption{OOF prediction scatter matrix across the four base models. Near-perfect linear alignment ($r > 0.996$ for all pairs) confirms the functional redundancy of the multi-model pool.}
+\label{fig:p2_model_corr}
+\end{figure}
+
+\subsubsection{Does Heterogeneity Rescue the Ensemble?}
+
+A possible objection is that the preceding redundancy is an artifact of using only gradient-boosted tree models. We therefore introduced two algorithmically distinct learners: a multilayer perceptron (MLP) \cite{rumelhart1986learning} and a Gaussian process regressor (GPR) with an RBF-plus-white-noise kernel \cite{rasmussen2006gaussian}. Four pools were evaluated using identical 10-fold OOF blending and SLSQP optimization: the original ACDCB pool (H1), an MLP-augmented pool (H2), a GPR-augmented pool (H3), and a combined MLP+GPR pool (H4).
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.15}
+\caption{Heterogeneous Pool Test}
+\label{tab:heterogeneous_pool}
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Pool} & \textbf{Min. $r$} & \textbf{Fusion $R^2$} & \textbf{$\Delta R^2$ vs. best} \\
+\midrule
+H1 Original & 0.9966 & 0.9494 & +0.0009 \\
+H2 + MLP & 0.9681 & 0.9495 & +0.0010 \\
+H3 + GPR & 0.9735 & \textbf{0.9498} & +0.0013 \\
+H4 + MLP + GPR & 0.9692 & 0.9498 & +0.0013 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The heterogeneous learners do reduce the minimum pairwise OOF correlation from 0.9966 to approximately 0.97, confirming that the original pool is indeed homogeneous. However, the added diversity does not produce a practically meaningful ensemble gain: the largest improvement over the best single member is only $\Delta R^2=+0.0013$ (H3), and the fused performance remains below the tuned raw XGBoost baseline ($R^2=0.9523$). Thus, heterogeneity reduces correlation but does not overturn the central conclusion that ensemble construction is not the limiting factor on this benchmark.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_heterogeneous_pool_comparison}
+\caption{Heterogeneous model-pool test. MLP/GPR members reduce cross-prediction correlation, but SLSQP fusion still yields only marginal gains over the best single pool member.}
+\label{fig:heterogeneous_pool}
+\end{figure}
+
+\subsection{Diagnosis 3: Age-Conditioned Piecewise Blending Is Unnecessary}
+
+The 28-day age threshold is motivated by concrete maturity physics---hydration kinetics differ between early and late ages. However, a systematic scan of threshold candidates $\tau \in \{3, 7, 14, 21, 28, 56, 90, 180\}$ days reveals a completely flat performance landscape (Fig.~\ref{fig:p2_threshold_flatness}):
+
+\begin{itemize}
+\item $R^2$ range across thresholds: $4.2 \times 10^{-4}$ (max 0.94984 at $\tau = 14$ days, min 0.94942 at $\tau = 180$ days)
+\item RMSE range: 0.016\,MPa (min 3.7396 at $\tau = 14$ days, max 3.7553 at $\tau = 56$ days)
+\item $\Delta R^2$ (global blend vs.\ best threshold): $+4.4 \times 10^{-4}$
+\end{itemize}
+
+Any choice of $\tau$ between 3 and 180 days yields essentially identical performance. The age-dependent information that motivated the piecewise design is already captured by gradient-boosted trees through their native ability to learn age-conditioned splits. The explicit age partitioning provides no additional modeling capacity.
+
+While a hard age boundary at $\tau = 28$ days could in principle introduce a prediction discontinuity at $t=\tau$, the threshold scan demonstrates that any $\tau \in [3,180]$ yields near-identical performance ($R^2$ range $=4.2 \times 10^{-4}$). This flatness has a direct implication: the discontinuity concern is secondary because the piecewise design itself provides no discriminable benefit. If the split point does not matter empirically, neither does the exact discontinuity induced by that split; the piecewise strategy is structurally unnecessary rather than merely poorly calibrated.
+
+Moreover, the early-age and late-age weight vectors differ only modestly: HGB\_Anchor dominates both regimes (early: 0.633, late: 0.415), while XGBoost's weight increases from 0.314 (early) to 0.463 (late). The weight shift, while directionally consistent with the expectation that different models may specialize by age regime, does not translate into measurable predictive improvement.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_p2_threshold_flatness}
+\caption{Performance insensitivity to age threshold $\tau$. $R^2$ varies by only $4.2 \times 10^{-4}$ and RMSE by 0.016\,MPa across $\tau \in [3, 180]$ days. The dashed line indicates the global (non-piecewise) baseline.}
+\label{fig:p2_threshold_flatness}
+\end{figure}
+
+\subsection{Diagnosis 4: Constrained Optimization Is a Safety Mechanism, Not a Performance Driver}
+
+The simplex constraint ($w_i \geq 0$, $\sum w_i = 1$) is motivated by stability concerns: unconstrained linear stacking can produce negative weights that exploit error cancellation between models, potentially degrading under distribution shift. However, on this dataset with well-calibrated GBDT predictions, the constraint proves non-binding.
+
+Comparing the SLSQP-constrained fusion (V2) against unconstrained ordinary least squares (V5):
+\begin{itemize}
+\item V2 (constrained): $R^2 = 0.9487$, RMSE $= 3.7000$\,MPa
+\item V5 (unconstrained): $R^2 = 0.9487$, RMSE $= 3.6994$\,MPa
+\item $\Delta R^2 = -2.6 \times 10^{-5}$, $\Delta$RMSE $= 0.0006$\,MPa
+\end{itemize}
+
+The OLS solution yields weights $[0.340, 0.023, 0.047, 0.589]$---all positive and summing to 0.999. No negative weights appear. The SLSQP solution differs only in the third decimal place. The constraint functions as a benign safety mechanism rather than a performance enabler: it guarantees interpretability and physical plausibility without measurably affecting predictive accuracy. Its value would manifest only under conditions where unconstrained stacking produces pathological weights (e.g., with severely miscalibrated or biased base models), which do not occur in this setting.
+
+\subsection{Summary: The Real Performance Driver}
+
+The ablation hierarchy, ranked by $\Delta R^2$ contribution, is:
 \begin{enumerate}
-\item \textbf{Feature Engineering (V0 $\to$ V1):} $\Delta R^2 = +0.0389$. This is the single largest gain, confirming that domain-informed feature engineering is the primary driver of performance improvement over the raw AdaBoost baseline. The engineered features encode physical relationships (water-binder ratio, maturity effects) that raw tree models must otherwise approximate through deep recursive partitioning.
-
-\item \textbf{Dual-Space Anchoring (V1 $\to$ V2):} $\Delta R^2 = +0.0005$, $\Delta\text{RMSE} = -0.031$\,MPa. Adding the anchor-space model provides a modest but consistent improvement across all metrics, validating the complementary information captured by the robustness-oriented feature space.
-
-\item \textbf{Age-Conditioned Piecewise (V2 $\to$ V3):} $\Delta R^2 = +0.0004$, $\Delta\text{RMSE} = -0.012$\,MPa. The piecewise age conditioning yields incremental gains beyond the global blend, with statistical significance confirmed by fold-wise comparison.
-
-\item \textbf{Feature Engineering vs.\ Raw (V3 vs.\ V4):} V4 (raw features $+$ piecewise blending) achieves slightly higher $R^2$ (0.9506 vs.\ 0.9488) and lower RMSE, but V3 achieves lower MAE (2.3522 vs.\ 2.3688). This cross-metric divergence is attributable to the RMSE-minimizing objective of the weight optimization---V4 optimizes more aggressively for large-error samples at the expense of median-error performance. Under the current fixed-parameter regime, both configurations exhibit competitive performance; joint optimization of feature engineering and hyperparameters is expected to resolve the remaining trade-off.
+\item \textbf{GBDT replaces AdaBoost}: $\Delta R^2 \approx +0.038$---the single substantive gain
+\item \textbf{Dual-space anchor model}: $\Delta R^2 = +0.0012$---marginal ($\sim$0.1\%)
+\item \textbf{Age-conditioned piecewise}: $\Delta R^2 = +3 \times 10^{-5}$---negligible
+\item \textbf{Feature engineering}: $\Delta R^2 = -0.0054$---counterproductive
+\item \textbf{Constrained optimization}: $\Delta R^2 \approx 0$---neutral
 \end{enumerate}
+
+In total, the four architectural innovations of ACDCB contribute a combined $\Delta R^2 < -0.004$ beyond what a single fine-tuned XGBoost on raw features achieves. The appearance of strong performance relative to the AdaBoost baseline is an artifact of the baseline's weakness, not the framework's strength.
+
+Fig.~\ref{fig:ablation} presents the standard ablation bar chart, while Fig.~\ref{fig:ablation_radar} provides the multi-metric radar comparison.
 
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\columnwidth]{fig_ablation_r2_rmse}
-\caption{Ablation study results: $R^2$ and RMSE comparison across variants V0--V4, showing component-wise contributions to overall performance.}
+\caption{Standard ablation results: $R^2$ and RMSE across variants V0--V4. The dominant transition is V0 $\to$ V1 (AdaBoost $\to$ GBDT); subsequent architectural additions yield negligible improvement.}
 \label{fig:ablation}
 \end{figure}
 
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\columnwidth]{fig_ablation_radar}
-\caption{Multi-metric radar comparison of ablation variants, confirming reduced performance variance across folds for ACDCB configurations.}
+\caption{Multi-metric radar comparison of ablation variants. All GBDT-based variants (V1--V4) cluster tightly, confirming minimal differentiation among architectural choices.}
 \label{fig:ablation_radar}
 \end{figure}
-
-A fold-wise $R^2$ distribution analysis confirms that all ACDCB variants exhibit substantially lower variance across folds compared to the AdaBoost baseline, demonstrating enhanced stability. The single model comparison across all four metrics is provided in Figs.~\ref{fig:single_r2_rmse} and~\ref{fig:single_mae_mape}.
 
 \begin{figure}[!t]
 \centering
@@ -681,93 +890,146 @@ Table~\ref{tab:comparison} provides a consolidated comparison across all evaluat
  & & \textbf{(MPa)} & \textbf{(MPa)} & \textbf{(\%)} \\
 \midrule
 SVM (RBF)                 & 0.8713 & 5.8492 & 4.2099 & 14.728 \\
-AdaBoost$+$CART           & 0.9090 & 4.9695 & 3.5085 & 13.351 \\
+AdaBoost$+$CART           & 0.9142 & 4.8025 & 3.1466 & 11.388 \\
 ANN (8-8-1)               & 0.9160 & 4.7273 & 3.3637 & 11.909 \\
-Best Single (HGB)         & 0.9480 & 3.7408 & 2.3683 & 8.529 \\
-\textbf{ACDCB (Ours)}    & \textbf{0.9488} & \textbf{3.6996} & \textbf{2.3522} & \textbf{8.488} \\
+ACDCB (Age-Piecewise)     & 0.9488 & 3.6996 & 2.3522 & 8.488 \\
+\textbf{XGBoost Raw (Tuned)} & \textbf{0.9523} & \textbf{3.6457} & \textbf{2.3501} & \textbf{8.259} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-ACDCB outperforms all baselines across all four metrics. The performance hierarchy (SVM $<$ AdaBoost $<$ ANN $<$ Best Single $<$ ACDCB) is consistent with the broader ML literature on tabular data, where gradient-boosted tree ensembles generally outperform kernel methods and shallow neural networks. The key differentiator of ACDCB is not the individual model choice but the \emph{structured fusion mechanism} that extracts complementary information from heterogeneous representations.
+The single fine-tuned XGBoost on raw features outperforms all methods across all four metrics. The performance hierarchy (SVM $<$ AdaBoost $<$ ANN $<$ ACDCB $<$ XGBoost Raw) is consistent with the finding that gradient-boosted trees are the dominant model class for this tabular prediction task, and that architectural complexity beyond a single well-tuned GBDT model yields diminishing or negative returns. The critical observation is that ACDCB's structured fusion mechanism provides no advantage over a single model once the base learner has been optimized to the same standard.
 
-\subsection{Feature Importance Analysis}
+\subsection{SHAP-Based Explainability Analysis}
 
-Feature importance across the ACDCB ensemble, aggregated via mean SHAP values and split-count frequencies, reveals the dominant physical drivers of concrete strength (Fig.~\ref{fig:feature_imp}).
+To avoid hard-coded or model-agnostic importance scores, explainability is computed directly from the tuned raw-feature XGBoost model using TreeSHAP \cite{lundberg2017unified}. The model is trained on the 8 original UCI inputs, and the resulting SHAP values are therefore attributable to physically measured variables rather than to engineered surrogates. This choice is consistent with the ablation result that the raw representation is the best-performing and least collinear input space.
+
+\subsubsection{SHAP Summary}
+
+Mean absolute SHAP values identify Age (29.9\%), Cement (19.6\%), and Water (18.0\%) as the dominant contributors (Fig.~\ref{fig:feature_imp}). Slag, aggregate contents, superplasticizer, and fly ash have smaller but non-negligible contributions. This ranking is physically credible: age captures hydration progress, cement controls binder availability, and water enters through its negative influence on effective water-binder ratio.
 
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\columnwidth]{fig_feature_importance}
-\caption{Feature importance analysis aggregated via mean SHAP values and split-count frequencies across the ACDCB ensemble.}
+\caption{Feature importance from mean absolute TreeSHAP values of the tuned raw-feature XGBoost model. Values are computed from the trained model rather than manually specified.}
 \label{fig:feature_imp}
 \end{figure}
 
-The top-5 features are:
-\begin{enumerate}
-\item \textbf{Age} (18.2\% importance) --- Consistent with well-established concrete maturity principles.
-\item \textbf{Cement content} (14.8\%) --- Primary strength-giving component.
-\item \textbf{Water content} (12.5\%) --- Governs workability and influences effective water-binder ratio.
-\item \textbf{Water-Binder Ratio} (9.8\%) --- The single most important engineered feature, directly encoding Abrams' law.
-\item \textbf{Abrams Index} (8.2\%) --- An age-normalized water-binder interaction term.
-\end{enumerate}
+The SHAP summary plot in Fig.~\ref{fig:shap_summary} adds directional information. Larger age values generally contribute positively to predicted strength, whereas high water content tends to reduce strength, consistent with the qualitative expectation from Abrams' law. Cement exhibits a mostly positive contribution at higher dosages, while supplementary cementitious materials show more heterogeneous effects because their strength contribution depends on age and replacement level.
 
-The dominance of Age as the most important predictor (18.2\%) provides post-hoc validation for the age-conditioned design of ACDCB. Moreover, engineered features (water-binder ratio, Abrams index, maturity index) collectively account for approximately 35\% of total importance, underscoring the value of domain-informed feature engineering.
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_shap_summary}
+\caption{TreeSHAP summary plot for the tuned raw-feature XGBoost model. Each point represents one sample-feature attribution; color indicates the corresponding feature value.}
+\label{fig:shap_summary}
+\end{figure}
+
+\subsubsection{Dependence Analysis}
+
+SHAP dependence plots further test whether the model learns physically interpretable trends. The age dependence in Fig.~\ref{fig:shap_age} shows a saturating positive contribution, matching the expected maturity-like growth pattern. The cement dependence in Fig.~\ref{fig:shap_cement} is predominantly positive but nonlinear, reflecting interactions with water, aggregates, and supplementary binders. Because $W/B$ is not an explicit raw-model input, Fig.~\ref{fig:shap_wb} plots $W/(C+S+FA)$ against the aggregated SHAP contribution of water and binder constituents; the trend is decreasing, consistent with the inverse strength relation implied by Abrams' law.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_shap_dependence_age}
+\caption{SHAP dependence of curing age. The binned median indicates a saturating positive maturity effect.}
+\label{fig:shap_age}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_shap_dependence_water_binder_ratio}
+\caption{Water-binder dependence using the derived ratio $W/(C+S+FA)$ and the aggregated SHAP contribution of water and binder raw inputs. The trend is consistent with Abrams' law.}
+\label{fig:shap_wb}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig_shap_dependence_cement}
+\caption{SHAP dependence of cement content. The contribution is generally positive but nonlinear due to interactions with water, aggregates, and supplementary binders.}
+\label{fig:shap_cement}
+\end{figure}
+
+These explanations reinforce, rather than weaken, the simplicity conclusion. The strongest physical effects are already captured by the raw variables, and the engineered indices do not improve predictive accuracy once a strong tree model can learn nonlinear splits and interactions directly.
 
 %==========================================================================
 \section{Discussion}
 %==========================================================================
 
-\subsection{Physical Interpretability of the Age-Conditioned Design}
+\subsection{When Do Extra Strategies Help? Boundary Conditions of the Findings}
 
-The 28-day age threshold is not an arbitrary hyperparameter but reflects the standardized curing period in international concrete codes (ACI~318-19, EN~206). Physically, the hydration of cementitious materials undergoes a kinetic transition around this age: early-stage strength gain is dominated by rapid C$_3$S hydration and ettringite formation, while later-stage development involves slower C$_2$S hydration and pozzolanic reactions from supplementary cementitious materials (slag, fly ash). The distinct learned weights for early and late regimes ($\mathbf{w}_e$ vs.\ $\mathbf{w}_l$) can be interpreted as the algorithm's data-driven discovery of this kinetic dichotomy.
-
-\subsection{Why Dual Spaces Matter}
-
-The finding that the lower-dimensional anchor space (22-dim) produces the best-performing individual model challenges the assumption that more features always improve tree-based models. In gradient boosting, each additional feature introduces a split candidate that can increase variance if the feature's signal-to-noise ratio is insufficient given the sample size. The anchor space's deliberate omission of fine-grained compositional ratios (cement/binder fractions, component-in-paste fractions) reduces this variance inflation while retaining the essential physical relationships. The primary space, meanwhile, provides capacity that becomes valuable \emph{in ensemble}---its enhanced features contribute marginal gains when combined with the anchor model's stabilized predictions.
-
-\subsection{The Role of Convex Constraints}
-
-The simplex constraint ($w_j \geq 0$, $\sum w_j = 1$) serves both statistical and practical purposes. Statistically, it acts as a form of regularization, preventing the optimizer from assigning extreme negative weights that capitalize on error cancellation between models (a phenomenon observed in unconstrained stacking). Practically, it yields directly interpretable weights: one can state that ``the anchor model contributes 63.3\% of the early-age prediction,'' which is meaningful for engineering decision-makers who may be skeptical of black-box ensembles.
-
-The fact that unconstrained linear stacking can produce negative weights that improve RMSE on hold-out data but degrade under distribution shift is well-documented \cite{breiman1996stacked,vanderlaan2007super}. Our convex formulation trades a small amount of in-sample fit for guaranteed stability---a trade-off that aligns with the reliability requirements of structural engineering applications.
-
-\subsection{Limitations and Future Work}
-
-Several limitations of the current study warrant acknowledgement:
+The ablation results do not imply that feature engineering, model ensembling, age-conditioning, or constrained optimization are universally ineffective. Rather, they identify the \emph{boundary conditions} under which these strategies fail to provide marginal value:
 
 \begin{enumerate}
-\item \textbf{Dataset coverage}: The UCI dataset, while widely used, comprises only 1{,}030 samples and does not represent the full diversity of modern concrete (e.g., ultra-high-performance concrete, self-compacting concrete, recycled aggregate concrete). External validation on larger, more diverse datasets is needed.
+\item \textbf{Feature engineering} is harmful when the engineered features are algebraically derived from the same small set of base variables, creating near-perfect collinearities. It becomes valuable when features encode genuinely independent information (e.g., from different measurement modalities or physical simulations) that is not already captured by base variables.
 
-\item \textbf{Single age threshold}: The binary age split at 28 days, while physically motivated, may oversimplify the continuous evolution of model competency across the age spectrum. Future work could explore soft age-gating (e.g., age-dependent weight interpolation) or multi-threshold partitioning.
+\item \textbf{Multi-model ensembling} provides negligible gains when base models produce highly correlated predictions. The heterogeneous MLP/GPR test shows that lowering the minimum pairwise correlation to approximately 0.97 is still insufficient on this dataset; practically useful ensembling requires not merely different model names, but complementary errors strong enough to offset weaker individual accuracy.
 
-\item \textbf{Feature engineering dependence}: The current method relies on predefined engineering transformations. Automated feature discovery (e.g., genetic programming, neural feature generation) could uncover additional predictive relationships without manual specification.
+\item \textbf{Age-conditioned piecewise blending} is unnecessary when the conditioning variable (age) is already a continuous input to all base models. Gradient-boosted trees learn age-dependent splits natively; explicit partitioning only adds value when the conditioning variable is \emph{not} available as a model input, or when the relationship between the conditioning variable and optimal model selection is stepwise rather than smooth.
 
-\item \textbf{Hyperparameter-feature coupling}: The ablation results (V3 vs.\ V4) suggest that feature engineering and model hyperparameters interact; joint optimization of both is a natural next step.
+\item \textbf{Constrained optimization} serves as a safety mechanism whose value materializes when unconstrained stacking produces pathological weights---a scenario more likely with miscalibrated, biased, or overfitted base models. In well-regularized settings, it is benign but non-contributory.
+\end{enumerate}
 
-\item \textbf{Uncertainty quantification}: The current framework provides point predictions without uncertainty estimates. Incorporating conformal prediction or Bayesian approaches would enhance engineering decision-making.
+\subsection{The Bias-Variance Tradeoff in Small-Sample Regimes}
+
+The UCI concrete dataset, with 1{,}030 samples, sits in a regime where the bias-variance tradeoff strongly favors simpler models. Each additional feature, model, or parameter introduces variance that must be offset by bias reduction to yield net improvement. For gradient-boosted trees on 8 raw features, the $R^2 \approx 0.95$ achieved suggests that bias is already low; remaining error is dominated by irreducible noise (measurement error, unobserved mix variables, inherent material variability). In this regime, architectural complexity primarily adds variance, explaining why V4 (raw features, simple ensemble) outperforms V3 (engineered features, complex ensemble).
+
+This observation generalizes: for tabular datasets with $N < 10^4$ and $D < 20$, a single well-tuned gradient-boosted tree model is likely to approach the empirical performance ceiling. Additional architectural complexity should be adopted only after demonstrating that a tuned single model leaves statistically significant headroom.
+
+\subsection{Simplicity and Interpretability in Engineering Practice}
+
+Beyond predictive accuracy, structural engineering applications impose requirements that favor simpler models:
+
+\begin{itemize}
+\item \textbf{Interpretability}: A single XGBoost model permits feature importance ranking, SHAP dependence plots, and partial dependence analysis through well-established tooling. A multi-model ensemble with piecewise age-conditioned weights obscures these analyses behind an additional layer of fusion.
+
+\item \textbf{Deployability}: A single model requires one serialized object; ACDCB requires four base models plus weight vectors and age-threshold logic. In production quality-control settings, simpler deployment reduces integration risk.
+
+\item \textbf{Maintainability}: When a single model's prediction is anomalous, feature attribution identifies the responsible input. When a 4-model ensemble's prediction is anomalous, the diagnostician must additionally determine which model's contribution drove the error.
+\end{itemize}
+
+These practical considerations, combined with the empirical finding that ACDCB underperforms a single tuned XGBoost, lead to a clear recommendation: \textbf{rigorous single-model optimization should be the default baseline in structural engineering ML, with architectural complexity reserved for cases where ablation demonstrates statistically significant marginal gain.}
+
+\subsection{Limitations}
+
+Several limitations of this study warrant acknowledgement:
+
+\begin{enumerate}
+\item \textbf{Dataset scope}: The UCI dataset, while widely used as a benchmark, comprises only 1{,}030 samples with 8 base variables. The finding that feature engineering is counterproductive may not generalize to larger, higher-dimensional datasets where engineered features encode genuinely independent physical information.
+
+\item \textbf{Heterogeneous model scope}: The additional MLP/GPR test reduces cross-prediction correlations but remains limited to standard tabular learners and the same input variables. More expressive heterogeneous designs or models using genuinely independent data modalities may behave differently.
+
+\item \textbf{Single age threshold}: This study examined only hard binary partitioning. Soft age-gating (e.g., age-dependent weight interpolation) was not evaluated and may provide differentiable benefits.
+
+\item \textbf{Hyperparameter sensitivity}: While models were tuned via Bayesian optimization (200--500 trials), the interaction between feature engineering, hyperparameters, and ensembling was not jointly optimized due to combinatorial explosion. It is theoretically possible that a specific hyperparameter regime exists where engineered features outperform raw features, though the monotonic relationship observed in stepwise ablation makes this unlikely.
+
+\item \textbf{Uncertainty quantification}: Neither the single model nor the ensemble framework provides prediction intervals. Future work incorporating conformal prediction or quantile regression could assess whether ensemble diversity improves uncertainty calibration even when point predictions are redundant.
 \end{enumerate}
 
 \subsection{Engineering Application Potential}
 
-ACDCB's design prioritizes properties valued in structural engineering practice: accuracy, stability, and interpretability. The constrained weights prevent physically implausible predictions, while the age-conditioned structure aligns with standard construction scheduling (28-day strength certification). The framework is modular---new base models or feature spaces can be added without architectural changes---facilitating adaptation to project-specific data or requirements.
+For practicing structural engineers, the practical implication is straightforward: a single, well-tuned XGBoost model trained on raw mix design variables and curing age provides state-of-the-art concrete strength prediction with minimal implementation complexity. The model can be deployed as a spreadsheet-embeddable function or a lightweight web API, requiring only the 8 standard mix design inputs. Hyperparameter tuning via automated Bayesian optimization (200 trials, approximately 5 minutes on standard hardware) is sufficient to reach the performance plateau identified in this study. We recommend this ``tuned single model'' approach as the pragmatic standard for concrete strength prediction in both research benchmarking and engineering practice.
 
 %==========================================================================
 \section{Conclusion}
 %==========================================================================
 
-This study introduced ACDCB (Age-Conditioned Dual-Space Constrained Blending), a principled ensemble learning framework for concrete compressive strength prediction. The framework's key contributions are:
+This study constructed and systematically dissected ACDCB---a four-component ensemble framework for concrete compressive strength prediction---to determine whether each architectural addition provides statistically significant marginal value over a single, well-tuned gradient-boosted tree model. The framework is used here as a controlled ablation vehicle, not as a recommended prediction architecture. The findings are summarized as follows:
 
 \begin{enumerate}
-\item \textbf{Dual feature space design}: By constructing complementary primary (32-dim, expression-oriented) and anchor (22-dim, robustness-oriented) feature representations from the same raw inputs, ACDCB exploits multi-view information without requiring additional data sources.
+\item \textbf{The appearance of strong performance is driven by the baseline choice.} ACDCB's 25.6\% RMSE reduction over AdaBoost ($R^2 = 0.949$ vs.\ $0.914$) is almost entirely attributable to replacing AdaBoost with gradient-boosted trees ($\Delta R^2 \approx +0.038$), not to the framework's architectural innovations.
 
-\item \textbf{Constrained convex blending}: The simplex-constrained RMSE minimization (SLSQP) yields interpretable, non-negative model weights that sum to unity, ensuring physically meaningful ensemble predictions and preventing the instability associated with unconstrained linear stacking.
+\item \textbf{Feature engineering is counterproductive.} The 32-dimensional engineered feature space introduces severe collinearity, causing engineered-feature models to underperform raw-feature counterparts ($\Delta R^2 = -0.005$). VIF filtering and LASSO ranking improve upon the full engineered space but still fail to match the raw 8D baseline.
 
-\item \textbf{Age-conditioned piecewise optimization}: Separate weight learning for early-age ($\leq 28$ days) and late-age ($>28$ days) regimes captures the distinct kinetic regimes of concrete strength development, producing regime-specific model competencies.
+\item \textbf{The multi-model pool is functionally redundant.} Cross-model OOF prediction correlations exceed 0.996 for all pairs, rendering ensemble fusion nearly indistinguishable from single-model prediction. Adding MLP/GPR members lowers the minimum pairwise correlation to approximately 0.97 but still yields only $\Delta R^2 \leq +0.0013$ over the best single pool member.
 
-\item \textbf{Comprehensive empirical validation}: On the UCI benchmark (1{,}030 samples), ACDCB achieves $R^2 = 0.9488$, RMSE $= 3.70$\,MPa, MAE $= 2.35$\,MPa, and MAPE $= 8.49\%$. This represents a 25.6\% RMSE reduction and 36.4\% MAPE reduction over the AdaBoost baseline. Ablation experiments confirm that each architectural component---the dual-space design, the anchor model, and the age-conditioned piecewise blending---contributes measurably to the overall performance.
+\item \textbf{Age-conditioned piecewise blending is unnecessary.} A scan of age thresholds $\tau \in [3, 180]$ days yields an $R^2$ range of $4.2 \times 10^{-4}$---complete flatness. The information that piecewise blending was designed to capture is already learned by gradient-boosted trees from age as a continuous input.
+
+\item \textbf{Constrained optimization is benign but non-contributory.} OLS without constraints yields near-identical weights and predictions, confirming that the convex constraint set is non-binding in this well-calibrated setting.
+
+\item \textbf{A single fine-tuned XGBoost model is the empirical performance ceiling.} XGBoost with Bayesian-optimized hyperparameters on 8 raw features achieves $R^2 = 0.9523$ and RMSE $= 3.65$\,MPa, outperforming the full ACDCB framework ($R^2 = 0.9494$, RMSE $= 3.75$\,MPa) with lower complexity.
 \end{enumerate}
 
-The ACDCB framework demonstrates that structured, physically-informed ensemble design can outperform both individual sophisticated models and naive model averaging. Its modular architecture and interpretable weight structure position it as a practical tool for concrete strength prediction in both research and engineering quality-control contexts.
+These findings do not invalidate the individual design principles underlying ACDCB---dual representations, constrained fusion, and age-awareness remain conceptually sound. Rather, they demonstrate that on small-to-medium tabular datasets typical of structural engineering benchmarks, these principles do not translate into measurable predictive gains beyond what a single, well-optimized learner provides. We conclude that rigorous hyperparameter optimization of a single strong model should be the mandatory baseline in this domain, and that additional architectural complexity must be justified through ablation demonstrating statistically significant marginal improvement---not assumed from plausible motivation alone.
 
 %==========================================================================
 % Appendix: Nomenclature
@@ -803,7 +1065,7 @@ $K$                        & Number of CV folds (10) \\
 % Acknowledgment
 %==========================================================================
 \section*{Acknowledgment}
-The authors would like to thank the UCI Machine Learning Repository for providing the concrete compressive strength dataset used in this study.
+We thank the UCI Machine Learning Repository for providing the concrete compressive strength dataset used in this study.
 
 %==========================================================================
 % References

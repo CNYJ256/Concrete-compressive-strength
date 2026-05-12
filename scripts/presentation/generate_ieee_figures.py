@@ -10,6 +10,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.patches import FancyBboxPatch
+import json
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -61,6 +62,35 @@ def load_data():
         "Concrete compressive strength(MPa, megapascals) ": "strength",
     }
     return df.rename(columns=rename_map)
+
+
+def load_ablation_results():
+    path = ROOT / "results" / "metrics" / "ablation_results_acdcb_v2.json"
+    if not path.exists():
+        raise FileNotFoundError(f"Missing ablation metrics: {path}. Run scripts/eval/ablation_acdcb_v2.py first.")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def load_ablation_oof():
+    path = ROOT / "results" / "predictions" / "ablation_oof_v2.csv"
+    if not path.exists():
+        raise FileNotFoundError(f"Missing ablation OOF predictions: {path}. Run scripts/eval/ablation_acdcb_v2.py first.")
+    return pd.read_csv(path)
+
+
+def variant_metrics(results: dict, variant_key: str) -> dict:
+    variants = results["variants"]
+    if variant_key not in variants:
+        raise KeyError(f"Variant not found in ablation JSON: {variant_key}")
+    return variants[variant_key]["metrics"]
+
+
+def load_shap_importance():
+    path = ROOT / "results" / "metrics" / "shap_analysis.json"
+    if not path.exists():
+        raise FileNotFoundError(f"Missing SHAP metrics: {path}. Run scripts/eval/shap_analysis.py first.")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return data["mean_abs_shap"]
 
 
 # ============================================================
@@ -150,73 +180,76 @@ def fig_architecture():
     ax.set_ylim(0, 13)
     ax.axis("off")
 
-    def draw_box(x, y, w, h, text, color, text_color="white", fontsize=7.5):
+    BOX_FACE = "white"
+    BOX_EDGE = "#222222"
+    BOX_TEXT = "#111111"
+
+    def draw_box(x, y, w, h, text, fontsize=7.5):
         box = FancyBboxPatch((x - w/2, y - h/2), w, h,
-                             boxstyle="round,pad=0.08", facecolor=color,
-                             edgecolor="#333333", linewidth=1.0, alpha=0.92)
+                             boxstyle="round,pad=0.08", facecolor=BOX_FACE,
+                             edgecolor=BOX_EDGE, linewidth=1.0)
         ax.add_patch(box)
         ax.text(x, y, text, ha="center", va="center", fontsize=fontsize,
-                color=text_color, fontweight="bold")
+                color=BOX_TEXT, fontweight="bold")
 
-    def arrow(x1, y1, x2, y2, color="#555555", lw=0.8):
+    def arrow(x1, y1, x2, y2, lw=0.8):
         ax.annotate("", xy=(x2, y2), xytext=(x1, y1),
                     arrowprops=dict(arrowstyle="->,head_width=0.2,head_length=0.2",
-                                    color=color, lw=lw))
+                                    color="#333333", lw=lw))
 
     ax.text(5, 12.7, "ACDCB Architecture", ha="center", fontsize=9, fontweight="bold")
 
-    # Input
-    draw_box(5, 12.0, 6.5, 0.55,
-             "8 Base Features: Cement, Slag, Fly Ash, Water, SP, Coarse, Fine, Age",
-             "#2c3e50", fontsize=7)
+    # Input (enlarged)
+    draw_box(5, 12.0, 7.5, 0.6,
+             "Features: Cement, Slag, Fly Ash, Water, SP, Coarse, Fine, Age",
+             fontsize=7)
 
-    # Dual spaces
-    arrow(3.2, 11.7, 3.2, 11.1, "#4C78A8", 1.2)
-    arrow(6.8, 11.7, 6.8, 11.1, "#E45756", 1.2)
-    draw_box(3.2, 10.6, 3.8, 0.85,
+    # Dual spaces — separated: Primary at 2.7, Anchor at 7.3
+    arrow(2.7, 11.68, 2.7, 11.1, lw=1.2)
+    arrow(7.3, 11.68, 7.3, 11.1, lw=1.2)
+    draw_box(2.7, 10.6, 3.3, 0.9,
              "Primary Space (32-dim)\nBase + Mech + Enhanced\nExpression-Oriented",
-             "#4C78A8", fontsize=6.5)
-    draw_box(6.8, 10.6, 3.8, 0.85,
+             fontsize=6.5)
+    draw_box(7.3, 10.6, 3.3, 0.9,
              "Anchor Space (22-dim)\nBase + Mechanistic\nRobustness-Oriented",
-             "#E45756", fontsize=6.5)
+             fontsize=6.5)
 
-    # Model pool
-    for i, (mx, cx) in enumerate(zip([2.0, 3.8, 5.6, 7.4], ["#3498db", "#2ecc71", "#9b59b6", "#e74c3c"])):
-        arrow(mx, 10.15, mx, 9.65, cx, 0.8)
-    draw_box(2.0, 9.25, 1.6, 0.7, "XGBoost\nPrimary", "#3498db", fontsize=6.5)
-    draw_box(3.8, 9.25, 1.6, 0.7, "LightGBM\nPrimary", "#2ecc71", fontsize=6.5)
-    draw_box(5.6, 9.25, 1.6, 0.7, "HGB\nPrimary", "#9b59b6", fontsize=6.5)
-    draw_box(7.4, 9.25, 1.6, 0.7, "HGB_Anchor\nAnchor", "#e74c3c", fontsize=6.5)
+    # Model pool — positioned under respective spaces
+    model_x = [1.7, 3.7, 6.3, 8.3]
+    model_labels = ["XGBoost\nPrimary", "LightGBM\nPrimary", "HGB\nPrimary", "HGB_Anchor\nAnchor"]
+    for mx, label in zip(model_x, model_labels):
+        arrow(mx, 10.13, mx, 9.65, lw=0.8)
+        draw_box(mx, 9.25, 1.6, 0.7, label, fontsize=6.5)
 
-    # OOF matrix
-    for mx in [2.0, 3.8, 5.6, 7.4]:
-        arrow(mx, 8.88, 5, 8.38, "#777777", 0.6)
-    draw_box(5, 8.05, 5.5, 0.55,
+    # OOF matrix (enlarged)
+    for mx in model_x:
+        arrow(mx, 8.88, 5, 8.38, lw=0.6)
+    draw_box(5, 8.05, 6.5, 0.6,
              "OOF Prediction Matrix P in R^{Nx4} (10-fold CV)",
-             "#34495e", fontsize=7)
+             fontsize=7)
 
     # Age split
-    arrow(5, 7.75, 5, 7.25, "#333333", 1.0)
+    arrow(5, 7.73, 5, 7.25, lw=1.0)
     draw_box(5, 6.95, 5.0, 0.5,
              "Age-Conditioned Split: t <= 28d | t > 28d",
-             "#e67e22", fontsize=7)
+             fontsize=7)
 
-    # Piecewise weights
-    arrow(3.2, 6.68, 3.2, 6.18, "#27ae60", 1.0)
-    arrow(6.8, 6.68, 6.8, 6.18, "#c0392b", 1.0)
+    # Piecewise weights — separated: Early at 2.7, Late at 7.3
+    arrow(2.7, 6.68, 2.7, 6.20, lw=1.0)
+    arrow(7.3, 6.68, 7.3, 6.20, lw=1.0)
 
-    draw_box(3.2, 5.65, 4.0, 0.95,
+    draw_box(2.7, 5.65, 3.4, 1.0,
              "Early-Age Blend (w_e)\nmin RMSE s.t. w_i>=0, sum=1\nw_e=[0.314,0.040,0.013,0.633]",
-             "#27ae60", fontsize=6.5)
-    draw_box(6.8, 5.65, 4.0, 0.95,
+             fontsize=6.5)
+    draw_box(7.3, 5.65, 3.4, 1.0,
              "Late-Age Blend (w_l)\nmin RMSE s.t. w_i>=0, sum=1\nw_l=[0.463,0.000,0.122,0.415]",
-             "#c0392b", fontsize=6.5)
+             fontsize=6.5)
 
     # Constraint legend
-    ax.text(5, 4.8,
-            r"$\mathcal{W}=\{\mathbf{w}\mid w_i\!\geq\!0,\sum\!w_i\!=\!1\}$ Optim: SLSQP, Obj: RMSE, Sel: R$^2$-first",
+    ax.text(5, 4.75,
+            r"$\mathcal{W}=\{\mathbf{w}\mid w_i\!\geq\!0,\sum\!w_i\!=\!1\}$  Optim: SLSQP, Obj: RMSE, Sel: R$^2$-first",
             ha="center", fontsize=7.5,
-            bbox=dict(boxstyle="round,pad=0.2", facecolor="#f8f9fa", edgecolor="#cccccc"))
+            bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="#999999"))
 
     fig.tight_layout(pad=0.2)
     fig.savefig(OUT_DIR / "fig_architecture.pdf", **SAVE_KWARGS)
@@ -229,19 +262,20 @@ def fig_architecture():
 # Figure: Scatter — AdaBoost
 # ============================================================
 def fig_scatter_adaboost():
-    np.random.seed(42)
-    n = 1030
-    y_true = np.clip(np.random.normal(35.82, 16.70, n), 2.0, 85.0)
-    noise = np.random.normal(0, 4.97, n)
-    y_pred = y_true + noise * 0.85
-    rmse_val = 4.97
-    r2_val = 0.909
+    oof = load_ablation_oof()
+    results = load_ablation_results()
+    y_true = oof["y_true"].to_numpy(dtype=float)
+    y_pred = oof["paper1_adaboost"].to_numpy(dtype=float)
+    metrics = variant_metrics(results, "paper1_adaboost")
+    rmse_val = metrics["RMSE_mean"]
+    r2_val = metrics["R2_mean"]
 
     fig, ax = plt.subplots(figsize=(IEEE_WIDTH, 2.8))
     ax.scatter(y_true, y_pred, s=6, alpha=0.4, c="#4C78A8", edgecolor="none")
     lo, hi = 0, 85
     ax.plot([lo, hi], [lo, hi], color="#E45756", linewidth=1.2, linestyle="--", label=r"$y=x$")
-    ax.fill_between([lo, hi], [lo - rmse_val]*2, [lo + rmse_val]*2,
+    grid = np.linspace(lo, hi, 100)
+    ax.fill_between(grid, grid - rmse_val, grid + rmse_val,
                     alpha=0.07, color="gray", label=f"+/-1 RMSE ({rmse_val:.1f} MPa)")
     ax.set_xlim(lo, hi)
     ax.set_ylim(lo, hi)
@@ -265,19 +299,20 @@ def fig_scatter_adaboost():
 # Figure: Scatter — ACDCB
 # ============================================================
 def fig_scatter_acdcb():
-    np.random.seed(42)
-    n = 1030
-    y_true = np.clip(np.random.normal(35.82, 16.70, n), 2.0, 85.0)
-    noise = np.random.normal(0, 3.70, n)
-    y_pred = y_true + noise * 0.70
-    rmse_val = 3.70
-    r2_val = 0.949
+    oof = load_ablation_oof()
+    results = load_ablation_results()
+    y_true = oof["y_true"].to_numpy(dtype=float)
+    y_pred = oof["v3_dualspace_age_piecewise_acdcb"].to_numpy(dtype=float)
+    metrics = variant_metrics(results, "v3_dualspace_age_piecewise_acdcb")
+    rmse_val = metrics["RMSE_mean"]
+    r2_val = metrics["R2_mean"]
 
     fig, ax = plt.subplots(figsize=(IEEE_WIDTH, 2.8))
     ax.scatter(y_true, y_pred, s=6, alpha=0.4, c="#54A24B", edgecolor="none")
     lo, hi = 0, 85
     ax.plot([lo, hi], [lo, hi], color="#E45756", linewidth=1.2, linestyle="--", label=r"$y=x$")
-    ax.fill_between([lo, hi], [lo - rmse_val]*2, [lo + rmse_val]*2,
+    grid = np.linspace(lo, hi, 100)
+    ax.fill_between(grid, grid - rmse_val, grid + rmse_val,
                     alpha=0.07, color="gray", label=f"+/-1 RMSE ({rmse_val:.1f} MPa)")
     ax.set_xlim(lo, hi)
     ax.set_ylim(lo, hi)
@@ -301,11 +336,19 @@ def fig_scatter_acdcb():
 # Figure: Ablation R2 & RMSE Bar Chart
 # ============================================================
 def fig_ablation_r2_rmse():
+    results = load_ablation_results()
+    variant_keys = [
+        "paper1_adaboost",
+        "v1_primary_global_no_anchor",
+        "v2_dualspace_global",
+        "v3_dualspace_age_piecewise_acdcb",
+        "v4_raw_age_piecewise",
+    ]
     variants = ["V0\nAdaBoost", "V1\nPrimary\n+Global", "V2\nDualSpace\n+Global",
                 "V3\nACDCB\n(Full)", "V4\nRaw+\nPiecewise"]
     x = np.arange(len(variants))
-    r2 = [0.9090, 0.9479, 0.9484, 0.9488, 0.9506]
-    rmse = [4.9695, 3.7430, 3.7120, 3.6996, 3.6335]
+    r2 = [variant_metrics(results, key)["R2_mean"] for key in variant_keys]
+    rmse = [variant_metrics(results, key)["RMSE_mean"] for key in variant_keys]
     width = 0.38
 
     fig, ax1 = plt.subplots(figsize=(IEEE_WIDTH, 2.8))
@@ -346,16 +389,33 @@ def fig_ablation_r2_rmse():
 # Figure: Ablation Radar Chart
 # ============================================================
 def fig_ablation_radar():
-    r2_vals = [0.9090, 0.9479, 0.9484, 0.9488, 0.9506]
-    rmse_vals = [4.9695, 3.7430, 3.7120, 3.6996, 3.6335]
-    mae_vals = [3.5085, 2.3710, 2.3620, 2.3522, 2.3688]
-    mape_vals = [13.351, 8.5430, 8.5100, 8.4878, 8.3266]
+    results = load_ablation_results()
+    variant_keys = [
+        "paper1_adaboost",
+        "v1_primary_global_no_anchor",
+        "v2_dualspace_global",
+        "v3_dualspace_age_piecewise_acdcb",
+        "v4_raw_age_piecewise",
+    ]
+    metrics = [variant_metrics(results, key) for key in variant_keys]
+    r2_vals = [m["R2_mean"] for m in metrics]
+    rmse_vals = [m["RMSE_mean"] for m in metrics]
+    mae_vals = [m["MAE_mean"] for m in metrics]
+    mape_vals = [m["MAPE_mean"] for m in metrics]
 
     # Normalize: all to [0,1] where 1 is best
-    r2_n  = [(v - 0.90)/(0.952 - 0.90) for v in r2_vals]
-    rmse_n = [(5.0 - v)/(5.0 - 3.6) for v in rmse_vals]
-    mae_n = [(3.6 - v)/(3.6 - 2.3) for v in mae_vals]
-    mape_n = [(13.5 - v)/(13.5 - 8.0) for v in mape_vals]
+    def normalize_high(values):
+        lo, hi = min(values), max(values)
+        return [(v - lo) / (hi - lo + 1e-12) for v in values]
+
+    def normalize_low(values):
+        lo, hi = min(values), max(values)
+        return [(hi - v) / (hi - lo + 1e-12) for v in values]
+
+    r2_n = normalize_high(r2_vals)
+    rmse_n = normalize_low(rmse_vals)
+    mae_n = normalize_low(mae_vals)
+    mape_n = normalize_low(mape_vals)
 
     cats = [r"R$^2$", "RMSE$^{-1}$", "MAE$^{-1}$", "MAPE$^{-1}$"]
     N = len(cats)
@@ -391,19 +451,9 @@ def fig_ablation_radar():
 # Figure: Feature Importance
 # ============================================================
 def fig_feature_importance():
-    features = [
-        "Age", "Cement", "Water", "Water-Binder Ratio", "Abrams Index",
-        "Binder-Age Interact.", "Maturity Index", "Binder",
-        "Water-Cement Ratio", "Fine Aggregate", "Superplasticizer",
-        "Coarse Aggregate", "Binder-Agg. Ratio", "SCM Ratio",
-        "Fly Ash", "Slag", "Cement/Binder", "Paste Index",
-        "Age-WC Interact.", "SP-Binder Ratio",
-    ]
-    importance = [
-        0.182, 0.148, 0.125, 0.098, 0.082, 0.071, 0.063, 0.056,
-        0.048, 0.040, 0.032, 0.025, 0.019, 0.015, 0.012, 0.010,
-        0.008, 0.006, 0.004, 0.003,
-    ]
+    importance_rows = load_shap_importance()
+    features = [row["display_name"] for row in importance_rows]
+    importance = [row["relative_importance"] for row in importance_rows]
     idx_sorted = np.argsort(importance)
     feats_sorted = [features[i] for i in idx_sorted]
     imp_sorted = [importance[i] for i in idx_sorted]
@@ -412,21 +462,22 @@ def fig_feature_importance():
     colors = plt.cm.Blues(np.linspace(0.35, 0.95, len(imp_sorted)))
     bars = ax.barh(range(len(feats_sorted)), imp_sorted, color=colors, edgecolor="#333333",
                     linewidth=0.4, height=0.7)
-    for i in range(1, 6):
+    top_n = min(3, len(bars))
+    for i in range(1, top_n + 1):
         bars[-i].set_edgecolor("#E45756")
         bars[-i].set_linewidth(1.2)
 
     ax.set_yticks(range(len(feats_sorted)))
     ax.set_yticklabels(feats_sorted, fontsize=6.5)
-    ax.set_xlabel("Relative Importance", fontsize=9)
-    ax.set_title("Feature Importance in ACDCB Ensemble", fontsize=9, fontweight="bold")
+    ax.set_xlabel("Relative mean |SHAP|", fontsize=9)
+    ax.set_title("Raw XGBoost SHAP Importance", fontsize=9, fontweight="bold")
     ax.grid(axis="x", alpha=0.18)
     for bar, val in zip(bars, imp_sorted):
         if val >= 0.05:
             ax.text(val + 0.001, bar.get_y() + 0.35, f"{val:.3f}", fontsize=6)
 
     ax.text(0.95, 0.04,
-            "Red border: Top-5 (62.4% total)",
+            f"Red border: Top-{top_n}",
             transform=ax.transAxes, fontsize=6.5, ha="right",
             bbox=dict(boxstyle="round,pad=0.2", facecolor="#fff5f5", edgecolor="#E45756", alpha=0.8))
 

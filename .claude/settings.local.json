@@ -3,7 +3,29 @@
     "allow": [
       "Bash(python src/concrete_compressive_strength/reproduction/paper1_reproduce.py)",
       "Bash(python scripts/presentation/generate_sci_figures.py)",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(python scripts/eval/threshold_scan.py)",
+      "Bash(python -c \"import optuna; print\\('Optuna', optuna.__version__\\)\")",
+      "Bash(python scripts/train/hyperparam_search_raw.py)",
+      "Bash(python scripts/eval/ablation_acdcb_v2.py)",
+      "Bash(python scripts/eval/ablation_acdcb_v2.py results/metrics/raw_hyperparams.json)",
+      "Bash(conda run *)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); c=d['comparisons']; print\\(json.dumps\\(c, indent=2\\)\\)\")",
+      "Bash(D:/Anaconda_envs/envs/torch/python.exe *)",
+      "Bash(pdflatex -interaction=nonstopmode bare_jrnl.tex)",
+      "PowerShell(Get-Command *)",
+      "Bash(where pdflatex *)",
+      "Read(//c/Program Files/MiKTeX/miktex/bin/x64/**)",
+      "Read(//c/texlive/2025/bin/windows/**)",
+      "Bash(wsl which *)",
+      "Bash(wsl wslpath *)",
+      "Bash(wsl ls *)",
+      "Bash(wsl mount *)",
+      "Bash(wsl sudo *)",
+      "Bash(mkdir -p \"C:/Users/99405/tmp_latex_compile\")",
+      "Bash(cp -r \"F:/Desktop/School/人工智能科学与技术/Latex/\"* \"C:/Users/99405/tmp_latex_compile/\")",
+      "Bash(cp -r \"F:/Desktop/School/人工智能科学与技术/figures/presentation_highres/\"* \"C:/Users/99405/tmp_latex_compile/\")",
+      "Read(//c/Users/99405/**)"
     ]
   }
 }
