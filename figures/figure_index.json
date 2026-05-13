@@ -1,0 +1,59 @@
+{
+  "distribution_analysis": {
+    "n_samples": 1030,
+    "strength": {
+      "min": 2.331807832,
+      "max": 82.5992248,
+      "mean": 35.8178358261136,
+      "std": 16.697567652576247,
+      "skew": 0.4169222822701877
+    },
+    "age": {
+      "min": 1.0,
+      "max": 365.0,
+      "mean": 45.662135922330094,
+      "std": 63.13923912883281,
+      "skew": 3.26917740063459,
+      "use_log_scale": true
+    }
+  },
+  "plot_adaptations": {
+    "true_vs_pred": {
+      "paper1": {
+        "mode": "hexbin_log_density",
+        "xlim": [
+          1.3915352817380011,
+          83.006401401822
+        ],
+        "ylim": [
+          1.3915352817380011,
+          83.006401401822
+        ],
+        "n_points": 1030
+      },
+      "acdcb": {
+        "mode": "hexbin_log_density",
+        "xlim": [
+          1.3915352817380011,
+          83.006401401822
+        ],
+        "ylim": [
+          1.3915352817380011,
+          83.006401401822
+        ],
+        "n_points": 1030
+      }
+    },
+    "age_histogram_log_scale": true,
+    "ablation_r2_zoomed_axis": true,
+    "convergence_plot": "SLSQP objective traces"
+  },
+  "figures": {
+    "data_distribution": "F:\\Desktop\\School\\人工智能科学与技术\\figures\\01_data_distribution.png",
+    "true_vs_pred": "F:\\Desktop\\School\\人工智能科学与技术\\figures\\02_true_vs_pred_acdcb_vs_paper1.png",
+    "ablation_r2_rmse": "F:\\Desktop\\School\\人工智能科学与技术\\figures\\03_ablation_r2_rmse.png",
+    "optimizer_convergence": "F:\\Desktop\\School\\人工智能科学与技术\\figures\\04_optimizer_convergence.png",
+    "fold_r2_boxplot": "F:\\Desktop\\School\\人工智能科学与技术\\figures\\05_fold_r2_boxplot.png",
+    "ann_svm_comparison": "F:\\Desktop\\School\\人工智能科学与技术\\figures\\06_ann_svm_comparison.png"
+  }
+}
