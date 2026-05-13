@@ -265,10 +265,10 @@ def plot_pool_comparison(results: list[dict[str, Any]]) -> None:
     ax2.set_ylabel(r"$\Delta R^2$ vs best single", color="#E45756")
     ax1.set_title("Heterogeneous Pool Test", fontweight="bold", fontsize=9)
     ax1.grid(axis="y", alpha=0.18)
-    # Consolidated single annotation label
-    ax1.text(0.98, 0.95,
+    # Consolidated single annotation label (bottom-right)
+    ax1.text(0.98, 0.05,
              "Bar: Fusion $R^2$ (left axis)\nBar: $\\Delta R^2$ vs best (right axis)\nLine: Min pairwise $r$",
-             transform=ax1.transAxes, fontsize=5.5, va="top", ha="right",
+             transform=ax1.transAxes, fontsize=5.5, va="bottom", ha="right",
              bbox=dict(boxstyle="round,pad=0.25", facecolor="white",
                        edgecolor="#666666", alpha=0.92),
              zorder=20)
